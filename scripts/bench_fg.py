@@ -34,9 +34,11 @@ CASES = {
     "222_ZT_7": (2, 2, 2, "ZT", 7, 30),
     "333_ZT_23": (3, 3, 3, "ZT", 23, 120),
     "333_Z2_23": (3, 3, 3, "Z2", 23, 120),
+    "333_Z3_23": (3, 3, 3, "Z3", 23, 120),
 }
 SEEDS = list(range(1, 11))
 PARALLEL = 2  # keep the Mac usable; 4x4x4 and up were too heavy here
+RING_MOD = {"ZT": None, "Z2": 2, "Z3": 3}  # field our verifier checks in
 RANK_RE = re.compile(r"_m(\d+)_")
 
 
@@ -60,7 +62,7 @@ def run_one(name, n, m, p, ring, target, cap, seed):
         if files:
             best_file = min(files, key=lambda f: int(RANK_RE.search(f.name).group(1)))
             try:
-                load_fg(best_file, mod=2 if ring == "Z2" else None)
+                load_fg(best_file, mod=RING_MOD[ring])
                 verified = True
             except ValueError:
                 verified = False

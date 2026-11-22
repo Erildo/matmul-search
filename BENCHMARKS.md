@@ -50,6 +50,7 @@ Rerun with `python3 -I scripts/bench_fg.py`.
 | 2x2x2 | {-1,0,1} | 7 | 10 | 10/10 | 0.08s | 0.08s | 30s |
 | 3x3x3 | {-1,0,1} | 23 | 10 | 10/10 | 0.78s | 4.33s | 120s |
 | 3x3x3 | GF(2) | 23 | 10 | 10/10 | 0.06s | 0.06s | 120s |
+| 3x3x3 | F3 (mod 3) | 23 | 10 | 10/10 | 0.19s | 0.65s | 120s |
 
 **4x4x4 and larger: not measured.** Four parallel 4x4x4 runs made the Mac too
 sluggish, so the user stopped them. We are scoping the project to **3x3x3 and smaller**.

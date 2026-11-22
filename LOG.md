@@ -2,6 +2,17 @@
 
 Newest first. One entry per working session: what we did, and where to pick up.
 
+## 2026-11-22: planning 002
+
+- Found that 3x3x3 rank over F2 and Z is now proved to be 23 (arXiv:2610.11823). Our GF(2) plan was dead on arrival.
+- Consequence: a rank-22 rational scheme would need even denominators; such schemes reduce to F3, where the rank is open.
+- Planned attempt 002: flip-graph search over F3 (attempts/002-f3-rank22.md).
+- Ran 002 step 0 (no published F3 search found) and stage A (F3 reaches 23 in under 1s, 10/10, verified mod 3).
+- Ran 002 stage B: 2×30 min over F3, no rank 22. Rank 23 reached easily, but only 164 structurally different rank-23 schemes turned up (vs 2000 at ranks 24–26).
+- Found that the tool's "structure" uniqueness is a flip fingerprint, not equivalence. The 164 isn't a real count.
+- Planned 003: count F3 rank-23 classes with our own invariants, with GF(2) as the control (attempts/003-f3-landscape.md).
+- **Pick up here:** 003 step 1, the invariants module and its tests.
+
 ## 2026-11-22: benchmarking the best method
 
 - Collected reported run times (BENCHMARKS.md). Papers rarely state them.
