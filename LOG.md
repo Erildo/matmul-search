@@ -2,6 +2,16 @@
 
 Newest first. One entry per working session: what we did, and where to pick up.
 
+## 2026-11-22: attempt 006, class cubes for cyclic F3 schemes
+
+- Split each case of 005 into 21 SAT cubes, one per class of nonzero 3x3 matrices up to conjugation and sign. Cube c pins the simplest orbit
+  matrix to the class representative and forbids simpler matrices elsewhere (no rank-1 matrices, and no characteristic polynomial of a lower
+  class). There is a written proof that the cubes cover every solution, plus tests.
+- **Theorem, with drat-trim-checked proofs: no cyclic-invariant F3 scheme of rank ≤ 22 with ≤ 2 orbits.** All 21 cubes of (2,16) are UNSAT, and (1,19) was refuted in 005.
+- Split (7,1): 2 of 21 cubes refuted, the rest time out at 120 s. No rank 22 found.
+- A new cyclic F3 rank-23 scheme, inequivalent to all known ones (`results/f3/006_*`).
+- **Pick up here:** 007, close (3,13) with the same cubes (split further by a second matrix if needed), and start a cyclic flip-graph walk for the finding side.
+
 ## 2026-11-22: attempt 005, cyclic-invariant schemes over F3 by SAT
 
 - Literature (PRIOR_WORK.md): Z3-invariant rank-23 schemes exist with integer coefficients (Ballard et al. 2018). SAT under cyclic symmetry has only been run over GF(2) (Yang 2024, stuck past rank 15). Moosbauer–Poole's symmetric flip graphs are GF(2) only. ternary_flip_graph has no symmetric mode. We found no Z3-invariant search over F3.

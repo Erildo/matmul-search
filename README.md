@@ -50,4 +50,4 @@ PYTHONPATH=src python3 -m matmul.verify my.json --mod 2
 
 ## Status
 
-Attempts 000–005 done. See LOG.md for the latest state.
+Attempts 000–006 done. See LOG.md for the latest state.

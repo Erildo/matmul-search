@@ -3,8 +3,8 @@ id: 006-cyclic-f3-cubes
 date: 2026-11-22
 target: 3x3x3 rank 22 over F3, cyclic-invariant schemes (continues 005)
 method: SAT (CaDiCaL) with conjugation symmetry broken by a case split on the similarity class of one matrix; one cube per class; drat-trim proof per cube
-status: running (stage 0 done)
-best_rank_found: –
+status: done
+best_rank_found: 23 (a new cyclic F3 scheme); rank 22 with ≤ 2 orbits refuted
 budget: 2 processes × 1 thread; stage A ≤ 30 CPU-min; stage B ≤ 21 cubes × 120 s; stage C ≤ 21 cubes × 120 s (≤ 115 CPU-min in all)
 ---
 
@@ -156,11 +156,41 @@ excluded polynomial, and the gadget agrees with brute force.
 - **C2:** (7,1) cubes 10–20 with the exclusion, cap 120 s, seed 60014. These are the cubes where the exclusion bites most.
 - Budget so far: A ≈ 20, B ≈ 11 and C = 42 CPU-min. B2 adds ≤ 10 and C2 ≤ 22, for a total of ≤ 105, within the 115 bound.
 
+## Stage B2 and C2 results (with the characteristic-polynomial exclusion)
+| split | cube | status | solve s | proof |
+|---|---|---|---|---|
+| (2,16) | 10 | UNSAT | 2.6 | VERIFIED |
+| (2,16) | 19 | UNSAT | 161.7 | VERIFIED (proof run and check 273 s) |
+| (7,1) | 10–18 | TIMEOUT | 120 each | – |
+| (7,1) | 19 | UNSAT | 0.5 | VERIFIED |
+| (7,1) | 20 | UNSAT | 3.7 | VERIFIED |
+
+Compute used: about 103 CPU-min of the 115 bound (A 20, B 11, C 42, B2 7.5, C2 22).
+
 ## Result
-(to fill in)
+- **Theorem (with checked proofs).** There is no cyclic-invariant (Z3-symmetric) 3x3x3 scheme over F3 of rank ≤ 22 with at most 2 orbits.
+  - Why that covers every case: a ≥ 1 (005), and an instance (a, b) covers every split with fewer nonzero slots. The cases with ≤ 2 orbits and rank ≤ 22 are therefore the instances (2,16) and (1,19).
+  - What it rests on: (1,19) is refuted in 005. All 21 class cubes of (2,16) are refuted here (19 in stage B, 2 in B2), each by CaDiCaL with a DRAT proof checked by drat-trim. The lemma above shows the cubes cover every solution, and the encoding and the gadgets are tested against the known schemes and brute force.
+- Split (7,1): 2 of 21 cubes refuted (19 and 20, with the exclusion). The other 19 time out at 120 s. No rank-22 scheme found.
+- A new cyclic F3 rank-23 scheme (stage A, cube 0, 136 s), inequivalent to every scheme we know: invariant class `eebc48753638175a`.
+- Pinning helps finding too. At rank 23, cube 0 found a scheme in 1 of 2 runs, unpinned in 0 of 2 (300 s each).
 
 ## What went wrong / surprised us
+- The rank-1 classes come first in the `_bitkey` order, and every known scheme uses a rank-1 orbit matrix. That turned "pin one matrix"
+  into "pin the simplest matrix and forbid simpler ones elsewhere", which is far stronger than planned.
+- Cube 0 of (2,16) closed in 1.9 s, although every known rank-23 scheme lives in cube 0. The hard cubes were 10, 17 and 19, the ones
+  with the weakest exclusions until the characteristic-polynomial idea.
+- (7,1) barely moved. Seven orbits leave too much freedom for 120 s, even in a cube.
+- The first gadget test was slow because `class_reps()` recomputed the partition on each call. It is cached now.
 
 ## What we would do better
+- Use the characteristic-polynomial exclusion from the start. It cost one clause per polynomial per matrix and closed the two
+  hardest cubes.
+- Check the class order's meaning (rank, trace) before designing the cubes. It made the strengthening almost free.
 
 ## Next
+- 007 (proof side): close (3,13) the same way, with all three exclusions on from the start. Split any cube still open after 120 s by the
+  class of a second orbit matrix (slot 1's u, with class ≥ c).
+- Finding side: (7,1) is still the most likely home of a 22, but cubes alone do not crack it. By the decision rule ("few cubes close"),
+  switch the finding side to the cyclic flip-graph walk over F3 (the backup), seeded from the four known cyclic rank-23 schemes, including
+  the new one.
