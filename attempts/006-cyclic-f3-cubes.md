@@ -1,9 +1,9 @@
 ---
 id: 006-cyclic-f3-cubes
-date: 2026-11-22 (planned)
+date: 2026-11-22
 target: 3x3x3 rank 22 over F3, cyclic-invariant schemes (continues 005)
 method: SAT (CaDiCaL) with conjugation symmetry broken by a case split on the similarity class of one matrix; one cube per class; drat-trim proof per cube
-status: planned
+status: running (stage 0 done)
 best_rank_found: –
 budget: 2 processes × 1 thread; stage A ≤ 30 CPU-min; stage B ≤ 21 cubes × 120 s; stage C ≤ 21 cubes × 120 s (≤ 115 CPU-min in all)
 ---
@@ -74,6 +74,55 @@ known schemes, transformed this way, satisfy the cube of their own class.
 ## Backup
 A cyclic flip-graph walk over F3 (Moosbauer–Poole style, our own code, since `ternary_flip_graph` has no symmetric mode), seeded from
 `results/f3/005_3x3x3_rank23_*.json`.
+
+## Amendment before any run: minimal-class cubes (stage 0)
+Stage 0 showed that the `_bitkey` order puts the two rank-1 classes first: class 0 is rank 1 with trace ≠ 0 (234 matrices),
+class 1 is rank 1 with trace 0 (104 matrices). Every known cyclic scheme (BILR and both 005 schemes) has an orbit matrix in class 0.
+This makes a stronger split cheap. In cube c, pin the orbit member of the **smallest** class and forbid smaller classes in every other
+orbit matrix. Only classes 0 and 1 are forbidden explicitly, because they need nothing more than the 2×2 minors and the trace:
+- cube 0: slot 0 has u = rep₀, with no other condition;
+- cube 1: slot 0 has u = rep₁, and no orbit matrix (u, v, w of any slot) is rank 1 with nonzero trace;
+- cube c ≥ 2: slot 0 has u = rep_c, and no orbit matrix is of rank 1.
+
+`CyclicF3CNF(..., pin_u1=rep_c, min_class=c)` encodes this, and `to_class_form(..., minimal=True)` is the matching transformation.
+Stages A, B and C use these cubes. The decision rules are unchanged.
+
+## Lemma (class cubes cover every solution)
+*Every cyclic-invariant F3 scheme with a ≥ 1 nonzero orbits has a symmetric image that satisfies cube c for some c in 0..20, where c
+is the smallest class index among the first matrices u, v, wᵀ of the members of its nonzero orbits.*
+
+Proof. The moves used here are symmetries: each maps a correct cyclic-invariant scheme to one, and keeps the multiset of tensors up to the
+listed change.
+1. *Rotation.* The orbit of (u, v, w) is {(u, v, w), (v, wᵀ, uᵀ), (wᵀ, u, vᵀ)}, so any of its members can be the stored representative.
+   The first matrices of the three members are u, v and wᵀ. Choose the (orbit, member) whose first matrix has the smallest class c, and
+   store it in slot 0 (orbit slots can be reordered). A nonzero orbit has u, v, w all nonzero, so c is defined.
+2. *Sign.* (u, v, w) → (−u, −v, w) keeps every term of the orbit, because the images under σ are rescaled by (−1)(−1)·1 in each position.
+   Classes are taken up to sign, so after this move u is conjugate to rep_c.
+3. *Conjugation.* g_M: (u, v, w) → (MuM⁻¹, MvM⁻¹, M⁻ᵀwMᵀ) for M in GL₃(F3), applied to every term. The tensor Σ U_ij V_jl W_il =
+   tr(U V Wᵀ) is unchanged: Wᵀ maps to M Wᵀ M⁻¹. g_M commutes with σ: σ(g_M t) = (MvM⁻¹, M wᵀ M⁻¹, M⁻ᵀuᵀMᵀ) = g_M σ(t).
+   It maps a fixed term (x, x, xᵀ) to (MxM⁻¹, MxM⁻¹, (MxM⁻¹)ᵀ), again a fixed term. Choose M with M u M⁻¹ = rep_c.
+4. *Normalise the rest.* (u, v, w) → (u, −v, −w) on slot 0 makes the first nonzero entry of v equal to 1 without changing u.
+   Then `normal_form` on slots 1..a−1 and on the fixed slots rescales by ±1 and sorts.
+
+Classes are invariant under conjugation, sign and transposition, so all of u, v, w of every orbit still have class ≥ c. In particular,
+none is in class 0 if c ≥ 1, and none is of rank 1 if c ≥ 2. That is exactly cube c. ∎
+
+The tests check every move and the whole transformation on the three known schemes. They also check the gadget against the rank and
+trace on random matrices, and that a scheme pinned at a non-minimal class is rejected by the cube of that class.
+
+## Stage 0 result
+- `matmul.cyclic` now has `matrix_classes`, `class_reps`, `to_rep`, `conj`, `rotate`, `class_index`, `split_orbits`, `to_class_form`
+  and the options `pin_u1` and `min_class`. The runner is `scripts/run_006.py`.
+- Class counts: 39 similarity classes (= q³ + q² + q), 22 up to sign, 21 nonzero ones. Their sizes sum to 3⁹. The signed class sizes are
+  1, 2, 104, 208, 234 ×3, 624, 702, 864 ×4, 1248, 1404 ×5, 1872 ×3.
+- g_M keeps all three known schemes correct mod 3 and cyclic-invariant. In class form (from every orbit, and in minimal form), each one
+  satisfies its own cube.
+- For 2x2, the cubes find rank 7 (split (2,1)) and refute rank 6 (split (1,3)) in every class.
+- `CyclicF3CNF(3, 0, 22).trivially_unsat` holds, so a = 0 is impossible at 3x3.
+- Classes of the first matrices u, v, wᵀ over all orbit members: BILR {0, 1, 5, 6, 7}, 005-cadical {0, 1, 3, 4, 6, 7},
+  005-kissat {0, 1, 3, 6, 7}. All three are in cube 0.
+- Cube sizes for split (2,16): unpinned 21,392 vars and 136,148 clauses; cube 0 has 21,339 / 135,996; cube 1 has 21,634 / 137,896.
+- Test suite: 115 passed.
 
 ## Result
 (to fill in)

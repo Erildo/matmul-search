@@ -25,6 +25,7 @@ a' <= a, b' <= b) as CNF. Each F3 value is two Boolean variables (p, n): value 1
 
 from __future__ import annotations
 
+from functools import lru_cache
 from itertools import product
 
 from .scheme import Scheme
@@ -75,6 +76,31 @@ def is_cyclic_invariant(scheme: Scheme, p: int = P) -> bool:
     return a == b
 
 
+def split_orbits(scheme: Scheme, p: int = P):
+    """Inverse of `expand` for a cyclic-invariant scheme mod p: (orbit representatives, fixed matrices)."""
+    def red(m):
+        return [[int(x.numerator * pow(x.denominator, -1, p)) % p if hasattr(x, "numerator") else x % p
+                 for x in r] for r in m]
+
+    terms = [(red(u), red(v), red(w)) for u, v, w in zip(scheme.U, scheme.V, scheme.W)]
+    left = list(range(len(terms)))
+    orbits, fixed = [], []
+    while left:
+        t = terms[left.pop(0)]
+        k0 = _tensor(*t, p)
+        if _tensor(*sigma(t), p) == k0:
+            x = next(c for c in (t[0], [[-e % p for e in r] for r in t[0]])
+                     if _tensor(c, c, T(c), p) == k0)
+            fixed.append(x)
+            continue
+        for img in (sigma(t), sigma(sigma(t))):
+            k = _tensor(*img, p)
+            j = next(j for j in left if _tensor(*terms[j], p) == k)
+            left.remove(j)
+        orbits.append(t)
+    return orbits, fixed
+
+
 def _bitkey(mats):
     """The Boolean vector the encoder orders lexicographically: per value (p, n), False < True."""
     return tuple(b for m in mats for r in m for e in r for b in (e % 3 == 1, e % 3 == 2))
@@ -99,6 +125,167 @@ def normal_form(orbits, fixed):
     return out, fx
 
 
+# ---- conjugation symmetry and the classes of matrices ---------------------------------
+
+def _mm(A, B):
+    return [[sum(A[i][k] * B[k][j] for k in range(len(B))) % P for j in range(len(B[0]))] for i in range(len(A))]
+
+
+def _inv(A):
+    n = len(A)
+    M = [[x % P for x in row] + [int(i == j) for j in range(n)] for i, row in enumerate(A)]
+    for c in range(n):
+        piv = next(i for i in range(c, n) if M[i][c])
+        M[c], M[piv] = M[piv], M[c]
+        iv = M[c][c]  # in F3, 1/x = x
+        M[c] = [x * iv % P for x in M[c]]
+        for i in range(n):
+            if i != c and M[i][c]:
+                f = M[i][c]
+                M[i] = [(x - f * y) % P for x, y in zip(M[i], M[c])]
+    return [row[n:] for row in M]
+
+
+def gl_generators(n: int = 3):
+    """Generators of GL_n(F3): the transvections I + E_ij (i != j) and diag(2, 1, ..., 1)."""
+    gens = []
+    for i in range(n):
+        for j in range(n):
+            if i != j:
+                g = [[int(r == c) for c in range(n)] for r in range(n)]
+                g[i][j] = 1
+                gens.append(g)
+    d = [[int(r == c) for c in range(n)] for r in range(n)]
+    d[0][0] = 2
+    gens.append(d)
+    return gens
+
+
+def conj(M, term):
+    """g_M: (u, v, w) -> (M u M^-1, M v M^-1, M^-T w M^T). Commutes with sigma and keeps the matrix product tensor."""
+    Mi = _inv(M)
+    u, v, w = term
+    return (_mm(_mm(M, u), Mi), _mm(_mm(M, v), Mi), _mm(_mm(T(Mi), w), T(M)))
+
+
+def _key(x):
+    return tuple(e % P for r in x for e in r)
+
+
+def _unkey(k, n):
+    return [list(k[i * n:(i + 1) * n]) for i in range(n)]
+
+
+def matrix_classes(n: int = 3, signed: bool = True):
+    """Partition of all n x n matrices over F3 into conjugacy classes (signed=True: up to sign as well).
+
+    Returns {rep_key: [member keys]}; the representative is the `_bitkey`-smallest member.
+    """
+    gens = [(g, _inv(g)) for g in gl_generators(n)]
+    seen, out = set(), {}
+    for k in product(range(P), repeat=n * n):
+        if k in seen:
+            continue
+        cls, stack = [k], [k]
+        seen.add(k)
+        while stack:
+            x = _unkey(stack.pop(), n)
+            nb = [_key(_mm(_mm(g, x), gi)) for g, gi in gens]
+            if signed:
+                nb.append(_key([[-e for e in r] for r in x]))
+            for y in nb:
+                if y not in seen:
+                    seen.add(y)
+                    cls.append(y)
+                    stack.append(y)
+        rep = min(cls, key=lambda c: _bitkey([_unkey(c, n)]))
+        out[rep] = cls
+    return out
+
+
+@lru_cache(maxsize=None)
+def _class_rep_keys(n: int):
+    reps = [r for r in matrix_classes(n) if any(r)]
+    return tuple(sorted(reps, key=lambda c: _bitkey([_unkey(c, n)])))
+
+
+def class_reps(n: int = 3):
+    """Representatives of the nonzero matrices up to conjugation and sign, sorted by `_bitkey` (cached)."""
+    return [_unkey(r, n) for r in _class_rep_keys(n)]
+
+
+def to_rep(x):
+    """(rep, s, M) with M (s x) M^-1 = rep, s in {1, 2}, rep the class representative of x != 0."""
+    n = len(x)
+    gens = gl_generators(n)
+    start = (_key(x), 1)
+    best = {start: [[int(i == j) for j in range(n)] for i in range(n)]}
+    stack = [start]
+    while stack:  # walk the class of x, recording a conjugating matrix for each member
+        k, s = stack.pop()
+        y, M = _unkey(k, n), best[(k, s)]
+        nxt = [((_key(_mm(_mm(g, y), _inv(g))), s), _mm(g, M)) for g in gens]
+        nxt.append(((_key([[-e for e in r] for r in y]), 3 - s), M))
+        for st, M2 in nxt:
+            if st not in best:
+                best[st] = M2
+                stack.append(st)
+    (k, s), M = min(best.items(), key=lambda it: (_bitkey([_unkey(it[0][0], n)]), it[0][1]))
+    return _unkey(k, n), s, M
+
+
+def class_index(x, reps=None):
+    """Index of the class of x != 0 in class_reps() (conjugation and sign)."""
+    reps = reps or [_key(r) for r in class_reps(len(x))]
+    return reps.index(_key(to_rep(x)[0]))
+
+
+def rotate(t, r):
+    """The r-th member of the sigma-orbit of t, as the orbit representative."""
+    for _ in range(r % 3):
+        t = sigma(t)
+    return t
+
+
+def to_class_form(orbits, fixed, slot=None, minimal=False):
+    """Move one nonzero orbit to slot 0 with u equal to its class representative (the class-cube lemma).
+
+    1. choose a nonzero orbit (the given `slot`, else the first nonzero one);
+    2. rescale it by (u, v, w) -> (-u, -v, w) if needed and apply g_M to the whole scheme,
+       so that u becomes the class representative;
+    3. sign-normalise v of slot 0 by (u, v, w) -> (u, -v, -w), and put the other orbit slots and
+       the fixed slots in `normal_form`.
+    Returns (orbits, fixed, rep); the scheme is a symmetric image of the input.
+    """
+    def nz(t):
+        return all(any(e % P for r in m for e in r) for m in t)
+
+    if minimal:
+        # the member (orbit, rotation) whose first matrix has the smallest class index;
+        # the first matrices of the rotations of (u, v, w) are u, v and w^T
+        orbits = list(orbits)
+        reps = [_key(r) for r in class_reps(len(fixed[0]) if fixed else len(orbits[0][0]))]
+        cands = [(class_index(rotate(t, r)[0], reps), i, r) for i, t in enumerate(orbits) if nz(t) for r in range(3)]
+        _, slot, r = min(cands)
+        orbits[slot] = rotate(orbits[slot], r)
+    elif slot is None:
+        slot = next(i for i, t in enumerate(orbits) if nz(t))
+    u, v, w = orbits[slot]
+    rep, s, M = to_rep(u)
+    neg = (lambda m: [[-e % P for e in r] for r in m])
+    first = [(neg(u), neg(v), w) if s == 2 else (u, v, w)]
+    rest = [t for i, t in enumerate(orbits) if i != slot]
+    imgs = [conj(M, t) for t in first + rest]
+    fx = [conj(M, (x, x, T(x)))[0] for x in fixed]
+    u0, v0, w0 = imgs[0]
+    assert _key(u0) == _key(rep)
+    t = next((e % P for r in v0 for e in r if e % P), 1)
+    if t == 2:
+        v0, w0 = neg(v0), neg(w0)
+    o2, f2 = normal_form(imgs[1:], fx)
+    return [(u0, v0, w0)] + o2, f2, rep
+
+
 # ---- CNF encoding over F3 ------------------------------------------------------------
 
 class CyclicF3CNF:
@@ -111,8 +298,11 @@ class CyclicF3CNF:
                  representative of every solution (rescaling and reordering are symmetries).
     """
 
-    def __init__(self, n: int, a: int, b: int, fixed_sum: bool = True, break_sym: bool = True):
+    def __init__(self, n: int, a: int, b: int, fixed_sum: bool = True, break_sym: bool = True,
+                 pin_u1=None, min_class: int = 0):
         self.n, self.a, self.b = n, a, b
+        self.pin_u1 = pin_u1
+        self.min_class = min_class
         self.nv = 0
         self.clauses: list[list[int]] = []
         self._pair: dict = {}
@@ -130,11 +320,36 @@ class CyclicF3CNF:
             for e in range(nn):
                 i, j = divmod(e, n)
                 self._sum_equals([self.fix[k][e] for k in range(b)], 1 if i == j else 0)
+        k0 = 0
+        if pin_u1 is not None:
+            # cube of a class (see class_form): slot 0's u is fixed to the class representative,
+            # slot 0 keeps the sign normalisation of v and leaves the orbit lex chain.
+            if a < 1:
+                raise ValueError("pin_u1 needs a >= 1")
+            for vals, x in zip(self.orb[0][0], (e % 3 for r in pin_u1 for e in r)):
+                for lit in self._is(vals, x):
+                    self.clauses.append([lit])
+            k0 = 1
+        self.class_clauses = (len(self.clauses), len(self.clauses))
+        if min_class > 0:
+            # minimal-class cube (to_class_form(minimal=True)): no orbit matrix u, v, w lies in a class
+            # below min_class. Classes 0 and 1 are the rank-1 matrices with trace != 0 and == 0; only
+            # those two are encoded, so for min_class >= 2 the constraint is "no rank-1 orbit matrix".
+            if n != 3:
+                raise ValueError("min_class is for n = 3")
+            c0 = len(self.clauses)
+            for k in range(a):
+                for m in range(3):
+                    if k == 0 and m == 0 and pin_u1 is not None:
+                        continue
+                    self._not_rank1(self.orb[k][m], only_trace_nonzero=(min_class == 1))
+            self.class_clauses = (c0, len(self.clauses))
         if break_sym:
             for k in range(a):
-                self._first_nonzero_is_one(self.orb[k][0])
+                if k > 0 or pin_u1 is None:
+                    self._first_nonzero_is_one(self.orb[k][0])
                 self._first_nonzero_is_one(self.orb[k][1])
-            for k in range(a - 1):
+            for k in range(k0, a - 1):
                 self._lex_leq(self._bits(sum(self.orb[k], [])), self._bits(sum(self.orb[k + 1], [])))
             for k in range(b - 1):
                 self._lex_leq(self._bits(self.fix[k]), self._bits(self.fix[k + 1]))
@@ -247,6 +462,28 @@ class CyclicF3CNF:
         for lit in self._is(vals[0], target % 3):
             self.clauses.append([lit])
 
+    def _not_rank1(self, vals, only_trace_nonzero=False):
+        """x is not of rank one (or, with only_trace_nonzero, not of rank one with nonzero trace)."""
+        n = self.n
+        x = lambda i, j: vals[i * n + j]
+        neg = lambda z: (z[1], z[0])
+        big = []
+        for i1 in range(n):
+            for i2 in range(i1 + 1, n):
+                for j1 in range(n):
+                    for j2 in range(j1 + 1, n):
+                        m = self._add(self._prod2(x(i1, j1), x(i2, j2)), neg(self._prod2(x(i1, j2), x(i2, j1))))
+                        big += list(m)  # minor != 0
+        y = self._new()
+        if only_trace_nonzero:
+            t = self._add(self._add(x(0, 0), x(1, 1)), x(2, 2))
+            self.clauses += [[-y, -t[0]], [-y, -t[1]]]  # y -> trace == 0 (this also covers x == 0)
+            self.aux_defs.append(("is0", y, (t,)))
+        else:
+            self.clauses += [[-y, -l] for pq in vals for l in pq]  # y -> x == 0
+            self.aux_defs.append(("is0", y, tuple(vals)))
+        self.clauses.append(big + [y])
+
     def _first_nonzero_is_one(self, vals):
         prefix = []
         for p, q in vals:
@@ -304,6 +541,9 @@ class CyclicF3CNF:
             if kind == "eq":
                 e, x, y = ins
                 assign[z] = (True if e is None else assign[e]) and assign[x] == assign[y]
+                continue
+            if kind == "is0":
+                assign[z] = all(val(t) == 0 for t in ins)
                 continue
             x, y = val(ins[0]), val(ins[1])
             r = x * y % 3 if kind == "mul" else (x + y) % 3
