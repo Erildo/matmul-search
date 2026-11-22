@@ -11,7 +11,7 @@ budget: 2 processes × 1 thread; stage A ≤ 40 CPU-min; stage B ≤ 120 CPU-min
 # 008: cyclic F3 large-neighbourhood search
 
 ## Hand-over
-- Branch `claude/007-three-orbits` holds 007 (commits `0c74e3f`, `a6f7f62` and the 007 close-out). Branch 008 from it, or from `main` once it is merged.
+- 007 is on `main` (commit `3b35377`). Branch 008 from `main`.
 - Tools and house rules as in 007:
   - `cadical`, plus drat-trim in `vendor/`;
   - check `uptime` first, and use at most 2 processes × 1 thread, each under a timeout;
