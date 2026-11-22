@@ -26,7 +26,7 @@ a' <= a, b' <= b) as CNF. Each F3 value is two Boolean variables (p, n): value 1
 from __future__ import annotations
 
 from functools import lru_cache
-from itertools import product
+from itertools import combinations, product
 
 from .scheme import Scheme
 
@@ -384,7 +384,7 @@ class CyclicF3CNF:
 
     def __init__(self, n: int, a: int, b: int, fixed_sum: bool = True, break_sym: bool = True,
                  pin_u1=None, min_class: int = 0, exclude_charpoly: bool = False,
-                 all_nonzero: bool = False, pin_cp1=None):
+                 all_nonzero: bool = False, pin_cp1=None, near=None):
         self.n, self.a, self.b = n, a, b
         self.pin_u1 = pin_u1
         self.min_class = min_class
@@ -457,6 +457,43 @@ class CyclicF3CNF:
                     self._charpoly_not_in(self.orb[k][m], cp1_exclusions(pin_cp1))
             self.cp1_clauses = (c0, len(self.clauses))
             k0 = 2
+        self.near_clauses = (len(self.clauses), len(self.clauses))
+        self.near_flags = []
+        if near is not None:
+            # attempt 008: between m and M orbit slots hold an orbit of S (any member rotation, sign normal form)
+            S, m, M = near
+            c0 = len(self.clauses)
+            targets = []
+            for t in S:
+                for r in range(3):
+                    (o,), _ = normal_form([rotate(t, r)], [])
+                    key = tuple(e % P for mat in o for row in mat for e in row)
+                    if key not in targets:
+                        targets.append(key)
+            for k in range(a):
+                vals = self.orb[k][0] + self.orb[k][1] + self.orb[k][2]
+                es = []
+                for tgt in targets:
+                    e = self._new()
+                    lits = [l for z, c in zip(vals, tgt) for l in self._is(z, c)]
+                    self.clauses += [[-e, l] for l in lits]
+                    self.clauses.append([e] + [-l for l in lits])
+                    self.aux_defs.append(("alleq", e, tuple(zip(vals, tgt))))
+                    es.append(e)
+                f = self._new()
+                self.clauses.append([-f] + es)
+                self.clauses += [[-e, f] for e in es]
+                self.aux_defs.append(("or", f, tuple(es)))
+                self.near_flags.append(f)
+            if m > a:
+                self.clauses.append([])
+            elif m > 0:
+                for sub in combinations(self.near_flags, a - m + 1):
+                    self.clauses.append(list(sub))
+            if M < a:
+                for sub in combinations(self.near_flags, M + 1):
+                    self.clauses.append([-f for f in sub])
+            self.near_clauses = (c0, len(self.clauses))
         if break_sym:
             for k in range(a):
                 free_u = pin_u1 is None if k == 0 else (k > 1 or pin_cp1 is None or pin_cp1 == cp_neg(pin_cp1))
@@ -682,6 +719,12 @@ class CyclicF3CNF:
                 continue
             if kind == "is0":
                 assign[z] = all(val(t) == 0 for t in ins)
+                continue
+            if kind == "alleq":
+                assign[z] = all(val(t) == c for t, c in ins)
+                continue
+            if kind == "or":
+                assign[z] = any(assign[e] for e in ins)
                 continue
             x, y = val(ins[0]), val(ins[1])
             r = x * y % 3 if kind == "mul" else (x + y) % 3

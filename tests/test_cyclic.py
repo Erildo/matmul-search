@@ -464,3 +464,101 @@ def test_solver_recovers_slots_1_and_2_in_their_level2_cube(tmp_path):
     model = [int(x) for l in r.stdout.splitlines() if l.startswith("v") for x in l.split()[1:]]
     s = expand(3, *cnf.decode(model))
     assert s.rank == 23 and verify(s, mod=3).ok and is_cyclic_invariant(s)
+
+
+# ---- 008: neighbourhoods near(S, m, M) ------------------------------------------------
+
+def _relabel(orbits, fixed, rng):
+    """The same scheme, re-labelled: orbits permuted, members rotated, signs flipped, then put in normal form."""
+    neg = lambda m: [[-e % 3 for e in r] for r in m]
+    out = []
+    for t in rng.sample(list(orbits), len(orbits)):
+        u, v, w = rotate(t, rng.randrange(3))
+        if rng.random() < 0.5:
+            u, v = neg(u), neg(v)
+        if rng.random() < 0.5:
+            v, w = neg(v), neg(w)
+        out.append((u, v, w))
+    return normal_form(out, fixed)
+
+
+@pytest.mark.timeout(120)
+def test_seed_schemes_are_near_themselves_and_relabelled_copies_too():
+    rng = random.Random(80)
+    for orbits, fixed in known_cyclic_all():
+        o, f = normal_form(orbits, fixed)
+        assert verify(expand(3, o, f), mod=3).ok
+        cnf = CyclicF3CNF(3, 7, 2, near=(orbits, 7, 7))
+        assert cnf.satisfied(cnf.witness(o, f)) == []
+        o2, f2 = _relabel(orbits, fixed, rng)
+        assert verify(expand(3, o2, f2), mod=3).ok and o2 != o
+        assert cnf.satisfied(cnf.witness(o2, f2)) == []
+        cnf6 = CyclicF3CNF(3, 7, 2, near=(orbits, 0, 6))
+        lo, hi = cnf6.near_clauses
+        bad = cnf6.satisfied(cnf6.witness(o2, f2))
+        assert bad and all(c in cnf6.clauses[lo:hi] for c in bad)
+
+
+@pytest.mark.timeout(60)
+def test_near_gadget_matches_a_direct_count():
+    rng = random.Random(81)
+    orbits, fixed = known_cyclic_all()[3]
+    targets = set()
+    for t in orbits:
+        for r in range(3):
+            (o,), _ = normal_form([rotate(t, r)], [])
+            targets.add(tuple(e for m in o for row in m for e in row))
+    for m, M in [(5, 7), (3, 6), (6, 6)]:
+        cnf = CyclicF3CNF(3, 7, 2, near=(orbits, m, M))
+        lo, hi = cnf.near_clauses
+        seen = set()
+        for _ in range(200):
+            slots = []
+            for _ in range(7):
+                if rng.random() < 0.8:
+                    (o,), _ = normal_form([rotate(rng.choice(orbits), rng.randrange(3))], [])
+                else:
+                    o = tuple([[rng.randrange(3) for _ in range(3)] for _ in range(3)] for _ in range(3))
+                slots.append(o)
+            w = cnf.witness(slots, fixed)
+            ok = all(any(w.get(abs(l)) == (l > 0) for l in c) for c in cnf.clauses[lo:hi])
+            cnt = sum(tuple(e % 3 for mm in t for row in mm for e in row) in targets for t in slots)
+            assert ok == (m <= cnt <= M)
+            seen.add(ok)
+        assert seen == {True, False}
+
+
+@pytest.mark.timeout(120)
+@pytest.mark.skipif(shutil.which("cadical") is None, reason="cadical not installed")
+def test_reduce71_at_distance_zero_is_unsat(tmp_path):
+    orbits, fixed = known_cyclic_all()[0]
+    cnf = CyclicF3CNF(3, 7, 1, near=(orbits, 7, 7))
+    f = tmp_path / "x.cnf"
+    f.write_text(cnf.dimacs())
+    r = subprocess.run(["cadical", "-q", str(f)], capture_output=True, text=True, timeout=100)
+    assert r.returncode == 20
+
+
+@pytest.mark.timeout(60)
+@pytest.mark.skipif(shutil.which("cadical") is None, reason="cadical not installed")
+def test_2x2_walk_step(tmp_path):
+    # 2x2 rank 7 at split (2,1): from one solution, ask for a cyclic scheme sharing at most one orbit with it
+    f = tmp_path / "x.cnf"
+    cnf = CyclicF3CNF(2, 2, 1)
+    f.write_text(cnf.dimacs())
+    r = subprocess.run(["cadical", "-q", str(f)], capture_output=True, text=True, timeout=30)
+    model = [int(x) for l in r.stdout.splitlines() if l.startswith("v") for x in l.split()[1:]]
+    S, fx = cnf.decode(model)
+    cnf2 = CyclicF3CNF(2, 2, 1, near=(S, 0, 1))
+    f.write_text(cnf2.dimacs())
+    r = subprocess.run(["cadical", "-q", str(f)], capture_output=True, text=True, timeout=30)
+    assert r.returncode in (10, 20)
+    if r.returncode == 10:
+        model = [int(x) for l in r.stdout.splitlines() if l.startswith("v") for x in l.split()[1:]]
+        o2, f2 = cnf2.decode(model)
+        s = expand(2, o2, f2)
+        assert s.rank == 7 and verify(s, mod=3).ok and is_cyclic_invariant(s)
+        keys = lambda orbs: {tuple(e for m in normal_form([rotate(t, r)], [])[0][0] for row in m for e in row)
+                             for t in orbs for r in range(3)}
+        assert sum(tuple(e for m in t for row in m for e in row) in keys(S) for t in o2) <= 1
+    print("2x2 walk step:", {10: "SAT", 20: "UNSAT"}[r.returncode])
