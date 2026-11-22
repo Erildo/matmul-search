@@ -113,3 +113,22 @@ code and is independent of the cube work.
   - level-1 cube 0 has 21,647 vars and 138,016 clauses; cubes 3–20 have 22,327 vars and 142.5–142.7k clauses;
   - the number of level-2 children per cube is 15, 15, 15, 14, 13, 12, 12, 11, 10, 9, 9, 8, 7, 6, 5, 5, 5, 4, 3, 2, 1, which is **181 in all**;
   - at 120 s each, the worst case for stage B is 362 CPU-min, three times its 120 CPU-min budget. The fewest-children-first order is there so whole cubes close inside the budget.
+
+## Stage A result ((3,13), 21 level-1 cubes, cap 120 s, CaDiCaL seed 70001)
+**All 21 cubes timed out.** Nothing was refuted and nothing was found. Compute used: 42 CPU-min, all spent in the solves; no proof runs were needed.
+Every cube had rank-1 bans, the characteristic-polynomial exclusion and `all_nonzero` on.
+
+For comparison:
+
+| split | orbits | level-1 cubes closed at 120 s |
+|---|---|---|
+| (2,16) | 2 | 19/21 (21/21 with the exclusion) |
+| (3,13) | 3 | 0/21 (exclusion on) |
+| (7,1) | 7 | 0/21 (2/21 with the exclusion) |
+
+The third orbit is where the cubes stop closing at this cap. The free pruning from `all_nonzero` was not enough.
+
+Notes for stage B, written before it runs:
+- Cube 20 has a single level-2 child. That child pins slot 1's polynomial to the only value it can take, and it drops the lex order between slots 1 and 2.
+  It is the stage A cube, slightly weaker, and running it would only repeat a timeout. The same holds, nearly, for cubes with 2–3 children.
+  The fewest-children-first order would spend stage B's first runs on exactly these.
