@@ -8,7 +8,7 @@ confirm it against the [Sedoglavic catalogue](https://fmm.univ-lille.fr) and set
 | 2x2x2 | any | 7 | 7 (optimal) | Strassen 1969; Winograd 1971 | yes | 7 (reference) |
 | 3x3x3 | Q | 23 | 19 | Laderman 1976; Bläser 2003 | no | 23 (reproduced with ternary_flip_graph, <5s) |
 | 3x3x3 | F2 and Z | 23 (optimal) | 23 | Tomar 2026, arXiv:2610.11823 (preprint, Lean-checked) | no | 23 |
-| 3x3x3 | F3 | 23 | ? (open) | – | no | 23 (attempt 002: 165 schemes; no 22 in 2×30 min) |
+| 3x3x3 | F3 | 23 | ? (open) | – | no | 23 (002: no 22 in 2×30 min; 004: no 22 in 180 pockets × 20 s) |
 | 4x4x4 | GF(2) | 47 | ? | AlphaTensor 2022 | no | – |
 | 4x4x4 | C | 48 | ? | AlphaEvolve 2025 | no | – |
 | 4x4x4 | Q | 48 or 49? | ? | see arXiv 2602.13171 | no | 49 (Strassen², in tests) |

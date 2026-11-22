@@ -106,6 +106,35 @@ Rule:
 
 (Results in "Follow-up results" below.)
 
+## Follow-up results (2026-11-22)
+`python3 -I scripts/run_003b.py 5 20000`: 10 walks, 2 processes × 1 thread, about 11 minutes. All 200,000 schemes
+pass our verifier. Lines in `results/runs.jsonl`; class keys per walk in `scratch/003b/keys/` (git-ignored).
+
+| Field | Classes per walk (k = 1..5) | Late rate per walk | Union of classes | Classes in ≥2 walks | Mean pairwise share | Capture-recapture N̂ |
+|---|---|---|---|---|---|---|
+| F3 | 4,880 / 13,786 / 3,630 / 10,927 / 18,332 | 0.00 / 0.50 / 0.43 / 0.29 / 0.87 | **51,555** | **0** | **0.000** | – (no overlap) |
+| GF(2) | 15,426 / 13,670 / 15,442 / 16,210 / 17,034 | 0.69 / 0.55 / 0.71 / 0.67 / 0.76 | **37,537** | 21,953 | **0.433** | median 36,916 (range 27k–73k) |
+
+**The opposite of what the 002 stall suggested.**
+- **F3 is fragmented.** The five F3 walks share no class at all. Some walks get trapped: walk 1 found no new class in
+  its last 20% (it used up a pocket of about 4,880 classes), walk 3 stalled near 3,630. Others keep going. Different
+  seeds land in different pockets, and this generator (flips plus rare plus moves) doesn't move between them.
+- **GF(2) is one shared region.** Every pair of GF(2) walks overlaps (22–57% of classes). The capture-recapture estimate
+  (about 37k) is close to the union actually seen (37.5k), so these walks have nearly covered the region they can reach.
+- **By the rule fixed beforehand:** F3 share < 1% → **large**. More precisely: large *and* split into pockets.
+
+**Possible side result (needs care).** 37,537 GF(2) classes means at least 37,537 pairwise inequivalent rank-23 schemes
+over GF(2): different invariants prove inequivalence. Published work reports "more than 17,000" (Kauers–Moosbauer, citing
+SAT-based searches) and says the total is unknown. Before claiming anything we need to: keep one representative scheme per
+class (this run deleted the scheme files to save disk), re-verify them, and check that the published equivalence
+uses the same symmetry group. Same for F3 (at least 51,555).
+
+**What this means for rank 22 over F3.** 002 walked inside a handful of pockets. If F3 schemes live in many separate
+pockets, a search for 22 should sample *many pockets* (many cheap independent seeds) rather than walk long in a few.
+Which pocket a walk lands in depends on its seed.
+
 ## Next
-Settle the intermediate result cheaply: F3 and GF(2), 5 unrelated seeds each, 20k schemes per seed, count classes
-in the union and the per-field slope. Then apply the decision rule (with the slope threshold) and choose 004.
+004 candidates:
+1. Rank-22 search over F3 across many pockets: hundreds of independent seeds, a short pool search from each, instead of two long runs.
+2. Keep representatives: rerun the walks saving one scheme per class, for a checkable count of inequivalent schemes (GF(2) and F3).
+3. Map the pockets: what separates them (which invariants differ), and do plus moves of larger size join them?

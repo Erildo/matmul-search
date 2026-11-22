@@ -12,7 +12,11 @@ Newest first. One entry per working session: what we did, and where to pick up.
 - Found that the tool's "structure" uniqueness is a flip fingerprint, not equivalence. The 164 isn't a real count.
 - Planned 003: count F3 rank-23 classes with our own invariants, with GF(2) as the control (attempts/003-f3-landscape.md).
 - Ran 003: built and tested orbit invariants. Both F3 and GF(2) have thousands of proven-inequivalent rank-23 schemes (8,176 and 15,808 classes in 20k schemes each). F3 slows down (14% new in the last 10k vs 77% for GF(2)), but from one seed only.
-- **Pick up here:** settle 003 with 5 seeds per field, then choose 004.
+- 003 follow-up, 5 seeds per field: F3 walks share **no** classes (51,555 in the union; some walks get trapped in pockets of about 4k), while GF(2) walks overlap heavily (37,537 in the union, capture-recapture about 37k). F3 is large and fragmented.
+- Possible side result: at least 37,537 inequivalent GF(2) rank-23 schemes (published: "more than 17,000"). Needs saved representatives before any claim.
+- Ran 004: 180 independent F3 walks × 20 s, each in a different pocket (180 distinct final classes). No rank 22.
+- Only 1 independent repeat pocket against 003 (seed 107), a hint of several hundred pockets or more (very rough).
+- **Pick up here:** choose 005: a deeper pocket search, a symmetry-restricted search, or saving representatives.
 
 ## 2026-11-22: benchmarking the best method
 

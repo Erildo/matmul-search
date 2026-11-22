@@ -23,7 +23,7 @@ secondary sources we haven't checked yet.
 - **3x3x3 rank over F2 and Z is exactly 23** (Tomar, Oct 2026, [arXiv:2610.11823](https://arxiv.org/abs/2610.11823),
   preprint, certificates checked in Lean). Builds on "at least 22 over Z" ([arXiv:2610.01639](https://arxiv.org/abs/2610.01639)).
   Over characteristic 0 the rank is still between 19 and 23; F3 is also open. Rank-22 searches over GF(2) or {-1,0,1} are now pointless.
-- **Over 13,000 inequivalent rank-23 schemes over GF(2)** found with SAT (Heule, Kauers, Seidl, "New ways to multiply 3x3 matrices",
+- **Over 13,000 (later "more than 17,000") inequivalent rank-23 schemes over GF(2)**; the total is unknown. Found with SAT (Heule, Kauers, Seidl, "New ways to multiply 3x3 matrices",
   [arXiv:1905.10192](https://arxiv.org/abs/1905.10192)).
 - **Fewer additions at rank 23** is a crowded secondary goal: 58, 55 and 52 additions reported in 2025–26
   ([2512.21980](https://arxiv.org/abs/2512.21980), [2610.27451](https://arxiv.org/abs/2610.27451), [2609.06588](https://arxiv.org/abs/2609.06588)) *(unverified)*.

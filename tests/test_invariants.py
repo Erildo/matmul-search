@@ -170,3 +170,26 @@ def test_rank_mod():
     assert rank_mod([[1, 2], [2, 1]], 3) == 1  # 1*1 - 2*2 = -3 = 0 mod 3
     assert rank_mod([[1, 2], [2, 1]], 5) == 2
     assert rank_mod([[0, 0], [0, 0]], 2) == 0
+
+
+# ---- the same guarantees over GF(2) ---------------------------------------------
+
+def gf2_a():
+    return load_fg(DATA / "gf2_333_r23_a.txt", mod=2)
+
+
+@pytest.mark.parametrize("move", MOVES, ids=lambda m: m.__name__)
+def test_move_keeps_gf2_scheme_correct(move):
+    assert verify(move(gf2_a(), 2, random.Random(3)), mod=2).ok
+
+
+@pytest.mark.timeout(30)
+@pytest.mark.parametrize("seed", range(4))
+def test_invariant_unchanged_by_random_symmetries_gf2(seed):
+    rng = random.Random(100 + seed)
+    s = gf2_a()
+    want = invariant(s, 2)
+    for _ in range(4):
+        s = rng.choice(MOVES)(s, 2, rng)
+        assert invariant(s, 2) == want
+    assert verify(s, mod=2).ok
