@@ -9,7 +9,8 @@ Newest first. One entry per working session: what we did, and where to pick up.
 - Built `matmul.cyclic` (CNF encoder, tested), installed CaDiCaL and Kissat, and built drat-trim in vendor/.
 - Sanity checks passed: 2x2 rank 7 found and rank 6 refuted with checked proofs. 3x3 rank 23 found from scratch in 257 s (CaDiCaL) and 907 s (Kissat): two new inequivalent cyclic F3 schemes.
 - Rank 22: split (1,19) **UNSAT, proof checked by drat-trim**. The other six splits timed out at 10 min each. So: no cyclic-invariant F3 rank-≤22 scheme with ≤ 1 orbit. Everything else is open.
-- **Pick up here:** 006: add conjugation symmetry breaking, try to close (2,16), and spend a longer or cube-and-conquer run on (7,1), the 22 analogue of the split that solves fast at 23.
+- Planned 006 (attempts/006-cyclic-f3-cubes.md): break the conjugation symmetry by splitting each case on the class of one matrix (21 classes), with one SAT cube per class and a checked proof per cube.
+- **Pick up here:** read the hand-over section of attempts/006-cyclic-f3-cubes.md (branch, tools, drat-trim rebuild, seeds from 60001), then start stage 0.
 
 ## 2026-11-22: planning 002
 
