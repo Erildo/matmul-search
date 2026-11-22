@@ -50,4 +50,4 @@ PYTHONPATH=src python3 -m matmul.verify my.json --mod 2
 
 ## Status
 
-Test harness done (attempt 000). No search yet.
+Attempts 000–005 done. See LOG.md for the latest state.
