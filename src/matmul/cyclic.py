@@ -266,6 +266,40 @@ def charpoly_exclusions(c: int):
     return tuple(sorted(T for T, i in top.items() if i < c))
 
 
+def cp_neg(q):
+    """The characteristic polynomial of -x, given that of x: (t, c2, det) -> (-t, c2, -det)."""
+    t, s, d = q
+    return (-t % P, s, -d % P)
+
+
+def cp_canon(q):
+    """A characteristic polynomial up to sign: the smaller of q and cp_neg(q) in tuple order."""
+    return min(q, cp_neg(q))
+
+
+@lru_cache(maxsize=None)
+def _class_canons():
+    """For each class index (class_reps order), the canonical polynomials of its members."""
+    reps = list(_class_rep_keys(3))
+    out = [set() for _ in reps]
+    for rep, members in matrix_classes(3).items():
+        if any(rep):
+            out[reps.index(rep)] = {cp_canon(charpoly(_unkey(k, 3))) for k in members}
+    return out
+
+
+@lru_cache(maxsize=None)
+def cp1_choices(c: int):
+    """The level-2 cubes of class cube c: canonical polynomials carried by some matrix of class >= c."""
+    return tuple(sorted(set().union(*_class_canons()[c:])))
+
+
+@lru_cache(maxsize=None)
+def cp1_exclusions(p):
+    """Polynomials q with cp_canon(q) < p: in level-2 cube (c, p) no matrix of orbit slots >= 1 has one."""
+    return tuple(q for q in product(range(P), repeat=3) if cp_canon(q) < p)
+
+
 def rotate(t, r):
     """The r-th member of the sigma-orbit of t, as the orbit representative."""
     for _ in range(r % 3):
@@ -312,6 +346,30 @@ def to_class_form(orbits, fixed, slot=None, minimal=False):
     return [(u0, v0, w0)] + o2, f2, rep
 
 
+def to_level2_form(orbits, fixed):
+    """The level-2 cube lemma (attempt 007): minimal class form, then slot 1 by characteristic polynomial.
+
+    After to_class_form(minimal=True), among the members of orbit slots 1.. pick the one whose first matrix
+    has the smallest polynomial up to sign (cp_canon), move it to slot 1 as that rotation, rescale by
+    (-u, -v, w) so that u's polynomial is the canonical one (and, if p = cp_neg(p), so that u's first nonzero
+    entry is 1), then by (u, -v, -w) so that v's first nonzero entry is 1. Slots 2.. and the fixed slots are put in
+    normal_form. Every orbit must be nonzero. Returns (orbits, fixed, rep, p).
+    """
+    o, f, rep = to_class_form(orbits, fixed, minimal=True)
+    cands = [(cp_canon(charpoly(rotate(t, r)[0])), i, r) for i, t in enumerate(o[1:], 1) for r in range(3)]
+    p, i, r = min(cands)
+    u, v, w = rotate(o[i], r)
+    neg = (lambda m: [[-e % P for e in row] for row in m])
+    first = (lambda m: next((e % P for row in m for e in row if e % P), 1))
+    if charpoly(u) != p or (p == cp_neg(p) and first(u) == 2):
+        u, v = neg(u), neg(v)
+    assert charpoly(u) == p
+    if first(v) == 2:
+        v, w = neg(v), neg(w)
+    rest, f2 = normal_form([t for k, t in enumerate(o[1:], 1) if k != i], f)
+    return [o[0], (u, v, w)] + rest, f2, rep, p
+
+
 # ---- CNF encoding over F3 ------------------------------------------------------------
 
 class CyclicF3CNF:
@@ -325,7 +383,8 @@ class CyclicF3CNF:
     """
 
     def __init__(self, n: int, a: int, b: int, fixed_sum: bool = True, break_sym: bool = True,
-                 pin_u1=None, min_class: int = 0, exclude_charpoly: bool = False):
+                 pin_u1=None, min_class: int = 0, exclude_charpoly: bool = False,
+                 all_nonzero: bool = False, pin_cp1=None):
         self.n, self.a, self.b = n, a, b
         self.pin_u1 = pin_u1
         self.min_class = min_class
@@ -333,6 +392,8 @@ class CyclicF3CNF:
         self.clauses: list[list[int]] = []
         self._pair: dict = {}
         self._triple: dict = {}
+        self._cp: dict = {}
+        self.pin_cp1 = pin_cp1
         self.aux_defs: list = []  # (kind, out, ins) in creation order, for computing a witness
         nn = n * n
         # primary F3 values: orbit k has u, v, w (each n*n), fixed k has x (n*n)
@@ -372,9 +433,34 @@ class CyclicF3CNF:
                     if exclude_charpoly:
                         self._charpoly_not_in(self.orb[k][m], charpoly_exclusions(min_class))
             self.class_clauses = (c0, len(self.clauses))
+        self.nonzero_clauses = (len(self.clauses), len(self.clauses))
+        if all_nonzero:
+            # attempt 007: every orbit slot holds a nonzero orbit (u, v and w all nonzero)
+            c0 = len(self.clauses)
+            for k in range(a):
+                for m in range(3):
+                    self.clauses.append(self._bits(self.orb[k][m]))
+            self.nonzero_clauses = (c0, len(self.clauses))
+        self.cp1_clauses = (len(self.clauses), len(self.clauses))
+        if pin_cp1 is not None:
+            # level-2 cube (to_level2_form): slot 1's u has polynomial pin_cp1, and no matrix of orbit
+            # slots >= 1 has a polynomial whose canonical form is smaller. Slot 1 leaves the lex chain.
+            if pin_u1 is None or a < 2 or n != 3 or tuple(pin_cp1) != cp_canon(tuple(pin_cp1)):
+                raise ValueError("pin_cp1 needs pin_u1, a >= 2, n = 3 and a canonical polynomial")
+            pin_cp1 = tuple(pin_cp1)
+            c0 = len(self.clauses)
+            for z, v in zip(self._charpoly(self.orb[1][0]), pin_cp1):
+                for lit in self._is(z, v):
+                    self.clauses.append([lit])
+            for k in range(1, a):
+                for m in range(3):
+                    self._charpoly_not_in(self.orb[k][m], cp1_exclusions(pin_cp1))
+            self.cp1_clauses = (c0, len(self.clauses))
+            k0 = 2
         if break_sym:
             for k in range(a):
-                if k > 0 or pin_u1 is None:
+                free_u = pin_u1 is None if k == 0 else (k > 1 or pin_cp1 is None or pin_cp1 == cp_neg(pin_cp1))
+                if free_u:
                     self._first_nonzero_is_one(self.orb[k][0])
                 self._first_nonzero_is_one(self.orb[k][1])
             for k in range(k0, a - 1):
@@ -516,6 +602,16 @@ class CyclicF3CNF:
         """The characteristic polynomial (trace, c2, det) of x is none of the forbidden triples."""
         if not forbidden:
             return
+        tr, c2, det = self._charpoly(vals)
+        ne = lambda z, v: [z[0], z[1]] if v == 0 else ([-z[0]] if v == 1 else [-z[1]])
+        for t, s2, d in forbidden:
+            self.clauses.append(ne(tr, t) + ne(c2, s2) + ne(det, d))
+
+    def _charpoly(self, vals):
+        """F3 values (trace, c2, det) of a 3x3 matrix, built once per matrix."""
+        key = tuple(vals)
+        if key in self._cp:
+            return self._cp[key]
         x = lambda i, j: vals[i * 3 + j]
         neg = lambda z: (z[1], z[0])
         tr = self._add(self._add(x(0, 0), x(1, 1)), x(2, 2))
@@ -523,9 +619,8 @@ class CyclicF3CNF:
         c2 = self._add(self._add(minor(0, 1, 0, 1), minor(0, 2, 0, 2)), minor(1, 2, 1, 2))
         det = self._add(self._add(self._prod2(x(0, 0), minor(1, 2, 1, 2)), neg(self._prod2(x(0, 1), minor(1, 2, 0, 2)))),
                         self._prod2(x(0, 2), minor(1, 2, 0, 1)))
-        ne = lambda z, v: [z[0], z[1]] if v == 0 else ([-z[0]] if v == 1 else [-z[1]])
-        for t, s2, d in forbidden:
-            self.clauses.append(ne(tr, t) + ne(c2, s2) + ne(det, d))
+        self._cp[key] = (tr, c2, det)
+        return self._cp[key]
 
     def _first_nonzero_is_one(self, vals):
         prefix = []

@@ -305,3 +305,162 @@ def test_charpoly_exclusion_gadget(c):
         assert ok == want
         seen.add(want)
     assert seen == {True, False}
+
+
+# ---- 007: all orbits nonzero, and level-2 cubes by characteristic polynomial ------------
+
+from itertools import product  # noqa: E402
+
+from matmul.cyclic import (  # noqa: E402
+    charpoly, charpoly_exclusions, cp1_choices, cp1_exclusions, cp_canon, cp_neg, to_level2_form,
+)
+
+
+def known_cyclic_all():
+    """known_cyclic() plus the 006 rank-23 scheme."""
+    out = known_cyclic()
+    for f in sorted(RESULTS.glob("006_3x3x3_rank23_*.json")):
+        d = json.loads(f.read_text())
+        out.append(split_orbits(Scheme(3, 3, 3, d["U"], d["V"], d["W"], {})))
+    assert len(out) == 4
+    return out
+
+
+def level2_cnf(c, p, a=7, b=2):
+    return CyclicF3CNF(3, a, b, pin_u1=class_reps()[c], min_class=c, exclude_charpoly=True,
+                       all_nonzero=True, pin_cp1=p)
+
+
+def test_level1_cube_size_is_unchanged_from_006():
+    cnf = CyclicF3CNF(3, 2, 16, pin_u1=class_reps()[0], min_class=0)
+    assert (cnf.nv, len(cnf.clauses)) == (21339, 135996)
+
+
+@pytest.mark.timeout(60)
+def test_cp_tables_are_consistent():
+    for q in product(range(3), repeat=3):
+        assert cp_neg(cp_neg(q)) == q and cp_canon(q) == cp_canon(cp_neg(q))
+    x = [[1, 2, 0], [0, 1, 1], [2, 0, 2]]
+    assert charpoly([[-e % 3 for e in r] for r in x]) == cp_neg(charpoly(x))
+    for c in range(21):
+        ch = cp1_choices(c)
+        assert ch and all(p == cp_canon(p) for p in ch)
+        assert not set(ch) & set(charpoly_exclusions(c))  # carried by a class >= c, so allowed at level 1
+        for p in ch:
+            ex = set(cp1_exclusions(p))
+            assert p not in ex and cp_neg(p) not in ex
+            assert ex == {q for q in product(range(3), repeat=3) if cp_canon(q) < p}
+
+
+@pytest.mark.timeout(120)
+def test_known_schemes_in_level2_form_satisfy_their_cube():
+    for orbits, fixed in known_cyclic_all():
+        o2, f2, rep, p = to_level2_form(orbits, fixed)
+        c = class_reps().index(rep)
+        s = expand(3, o2, f2)
+        assert s.rank == 23 and verify(s, mod=3).ok and is_cyclic_invariant(s)
+        assert p in cp1_choices(c) and charpoly(o2[1][0]) == p
+        cnf = level2_cnf(c, p)
+        assert cnf.satisfied(cnf.witness(o2, f2)) == []
+
+
+def _slot1_from(o2, f2, i, r):
+    """Put member r of orbit i (i >= 1) into slot 1, normalised as to_level2_form does, whatever its polynomial."""
+    neg = lambda m: [[-e % 3 for e in row] for row in m]
+    first = lambda m: next((e % 3 for row in m for e in row if e % 3), 1)
+    u, v, w = rotate(o2[i], r)
+    q = cp_canon(charpoly(u))
+    if charpoly(u) != q or (q == cp_neg(q) and first(u) == 2):
+        u, v = neg(u), neg(v)
+    if first(v) == 2:
+        v, w = neg(v), neg(w)
+    rest, f3 = normal_form([t for k, t in enumerate(o2[1:], 1) if k != i], f2)
+    return [o2[0], (u, v, w)] + rest, f3, q
+
+
+@pytest.mark.timeout(240)
+def test_non_minimal_slot1_is_rejected_by_the_level2_clauses():
+    checked = 0
+    for orbits, fixed in known_cyclic_all():
+        o2, f2, rep, p = to_level2_form(orbits, fixed)
+        c = class_reps().index(rep)
+        for i in range(2, len(o2)):
+            for r in range(3):
+                o3, f3, q = _slot1_from(o2, f2, i, r)
+                if q <= p:
+                    continue
+                assert verify(expand(3, o3, f3), mod=3).ok
+                cnf = level2_cnf(c, q)
+                lo, hi = cnf.cp1_clauses
+                bad = cnf.satisfied(cnf.witness(o3, f3))
+                assert bad and all(cl in cnf.clauses[lo:hi] for cl in bad)
+                checked += 1
+                break
+            else:
+                continue
+            break
+    assert checked >= 2
+
+
+@pytest.mark.timeout(60)
+def test_cp1_gadget_matches_brute_force():
+    rng = random.Random(30)
+    c = 2
+    reps = class_reps()
+    for p in (cp1_choices(c)[0], cp1_choices(c)[len(cp1_choices(c)) // 2], cp1_choices(c)[-1]):
+        cnf = CyclicF3CNF(3, 3, 1, pin_u1=reps[c], pin_cp1=p)
+        lo, hi = cnf.cp1_clauses
+        ex = set(cp1_exclusions(p))
+        seen = set()
+        for _ in range(300):
+            mat = lambda: [[rng.randrange(3) for _ in range(3)] for _ in range(3)]
+            u1 = mat()
+            if rng.random() < 0.3:  # make the pin hold often enough to see both outcomes
+                for _ in range(200):
+                    if charpoly(u1) == p:
+                        break
+                    u1 = mat()
+            # other matrices: mostly u1, -u1 or u1^T (polynomial p or its negative, never excluded)
+            near = lambda: (rng.choice([u1, [[-e % 3 for e in r] for r in u1], T(u1)]) if rng.random() < 0.9
+                            else mat())
+            orbits = [(reps[c], mat(), mat()), (u1, near(), near()), (near(), near(), near())]
+            w = cnf.witness(orbits, [mat()])
+            ok = all(any(w.get(abs(l)) == (l > 0) for l in cl) for cl in cnf.clauses[lo:hi])
+            want = charpoly(u1) == p and not any(charpoly(m) in ex for t in orbits[1:] for m in t)
+            assert ok == want
+            seen.add(want)
+        assert seen == {True, False}
+
+
+def test_all_nonzero_rejects_a_zero_matrix():
+    orbits, fixed = known_cyclic_all()[0]
+    o2, f2, rep, p = to_level2_form(orbits, fixed)
+    cnf = level2_cnf(class_reps().index(rep), p)
+    lo, hi = cnf.nonzero_clauses
+    assert hi - lo == 7 * 3
+    zero = [[0] * 3 for _ in range(3)]
+    for k, m in [(0, 1), (3, 0), (6, 2)]:
+        o3 = [list(t) for t in o2]
+        o3[k][m] = zero
+        w = cnf.witness([tuple(t) for t in o3], f2)
+        assert not all(any(w.get(abs(l)) == (l > 0) for l in cl) for cl in cnf.clauses[lo:hi])
+
+
+@pytest.mark.timeout(120)
+@pytest.mark.skipif(shutil.which("cadical") is None, reason="cadical not installed")
+def test_solver_recovers_slots_1_and_2_in_their_level2_cube(tmp_path):
+    # fix every slot of a known scheme except orbit slots 1 and 2; the solver must complete them in the cube
+    orbits, fixed = known_cyclic_all()[0]
+    o2, f2, rep, p = to_level2_form(orbits, fixed)
+    cnf = level2_cnf(class_reps().index(rep), p)
+    w = cnf.witness(o2, f2)
+    keep = [v for k in (0, 3, 4, 5, 6) for m in cnf.orb[k] for pq in m for v in pq]
+    keep += [v for x in cnf.fix for pq in x for v in pq]
+    cnf.clauses += [[v if w[v] else -v] for v in keep]
+    f = tmp_path / "x.cnf"
+    f.write_text(cnf.dimacs())
+    r = subprocess.run(["cadical", "-q", str(f)], capture_output=True, text=True, timeout=100)
+    assert r.returncode == 10
+    model = [int(x) for l in r.stdout.splitlines() if l.startswith("v") for x in l.split()[1:]]
+    s = expand(3, *cnf.decode(model))
+    assert s.rank == 23 and verify(s, mod=3).ok and is_cyclic_invariant(s)
