@@ -562,3 +562,33 @@ def test_2x2_walk_step(tmp_path):
                              for t in orbs for r in range(3)}
         assert sum(tuple(e for m in t for row in m for e in row) in keys(S) for t in o2) <= 1
     print("2x2 walk step:", {10: "SAT", 20: "UNSAT"}[r.returncode])
+
+
+@pytest.mark.timeout(60)
+def test_freeze_keeps_chosen_orbits_and_breaks_symmetry_on_the_rest():
+    rng = random.Random(82)
+    orbits, fixed = known_cyclic_all()[1]
+    for _ in range(5):
+        keep = sorted(rng.sample(range(7), 5))
+        frozen = [orbits[i] for i in keep]
+        free, f2 = normal_form([orbits[i] for i in range(7) if i not in keep], fixed)
+        cnf = CyclicF3CNF(3, 7, 2, freeze=frozen)
+        assert cnf.satisfied(cnf.witness(frozen + free, f2)) == []
+        # a different orbit in a frozen slot is rejected
+        assert cnf.satisfied(cnf.witness([free[0]] + frozen[1:] + [frozen[0], free[1]], f2))
+
+
+@pytest.mark.timeout(60)
+@pytest.mark.skipif(shutil.which("cadical") is None, reason="cadical not installed")
+def test_freeze_all_orbits_reduce71_is_unsat_and_walk_subset_is_sat(tmp_path):
+    orbits, fixed = known_cyclic_all()[0]
+    f = tmp_path / "x.cnf"
+    f.write_text(CyclicF3CNF(3, 7, 1, freeze=orbits).dimacs())
+    assert subprocess.run(["cadical", "-q", str(f)], capture_output=True, timeout=50).returncode == 20
+    cnf = CyclicF3CNF(3, 7, 2, freeze=orbits[:5])
+    f.write_text(cnf.dimacs())
+    r = subprocess.run(["cadical", "-q", str(f)], capture_output=True, text=True, timeout=50)
+    assert r.returncode == 10
+    model = [int(x) for l in r.stdout.splitlines() if l.startswith("v") for x in l.split()[1:]]
+    s = expand(3, *cnf.decode(model))
+    assert s.rank == 23 and verify(s, mod=3).ok and is_cyclic_invariant(s)

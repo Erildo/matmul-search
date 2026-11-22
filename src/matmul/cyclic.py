@@ -384,7 +384,7 @@ class CyclicF3CNF:
 
     def __init__(self, n: int, a: int, b: int, fixed_sum: bool = True, break_sym: bool = True,
                  pin_u1=None, min_class: int = 0, exclude_charpoly: bool = False,
-                 all_nonzero: bool = False, pin_cp1=None, near=None):
+                 all_nonzero: bool = False, pin_cp1=None, near=None, freeze=None):
         self.n, self.a, self.b = n, a, b
         self.pin_u1 = pin_u1
         self.min_class = min_class
@@ -494,8 +494,21 @@ class CyclicF3CNF:
                 for sub in combinations(self.near_flags, M + 1):
                     self.clauses.append([-f for f in sub])
             self.near_clauses = (c0, len(self.clauses))
+        nf = 0
+        if freeze:
+            # attempt 008 backup: orbit slots 0..len(freeze)-1 hold the given orbits (unit clauses);
+            # symmetry breaking applies to the remaining orbit slots and the fixed slots only
+            if pin_u1 is not None or pin_cp1 is not None or len(freeze) > a:
+                raise ValueError("freeze excludes pin_u1/pin_cp1 and needs len(freeze) <= a")
+            nf = len(freeze)
+            for k, t in enumerate(freeze):
+                for m in range(3):
+                    for vals, x in zip(self.orb[k][m], (e % 3 for r in t[m] for e in r)):
+                        for lit in self._is(vals, x):
+                            self.clauses.append([lit])
+            k0 = nf
         if break_sym:
-            for k in range(a):
+            for k in range(nf, a):
                 free_u = pin_u1 is None if k == 0 else (k > 1 or pin_cp1 is None or pin_cp1 == cp_neg(pin_cp1))
                 if free_u:
                     self._first_nonzero_is_one(self.orb[k][0])

@@ -6,7 +6,7 @@ Shapes, for a seed scheme S (split (7,2)) and a distance k:
   walk      CyclicF3CNF(3, 7, 2, near=(S, 7-k, 6))  rank 23, differs from S in at least one orbit
 Every instance gets one line in results/runs.jsonl.
 
-usage: python3 -I scripts/run_008.py A
+usage: python3 -I scripts/run_008.py A | A2 CPU_SECONDS | A3 CPU_SECONDS SEED_NAME
 """
 
 from __future__ import annotations
@@ -146,8 +146,54 @@ def stage_a():
     print(json.dumps({"stage": "A", "cpu_s_left": round(budget.left), "not_run": budget.skipped}), flush=True)
 
 
+def run_frozen(seed_name, S, shape, keep, seed, cap, check_cap):
+    """Backup cube: the orbits of S with indices `keep` frozen in slots 0.., the rest of the split free."""
+    a, b = SHAPES[shape]
+    enc = CyclicF3CNF(3, a, b, freeze=[S[0][i] for i in keep])
+    name = f"{shape}_{seed_name}_keep{''.join(map(str, keep))}_cadical_s{seed}"
+    return solve_instance(enc, name, "cadical", seed, cap, work=WORK, found=FOUND, root=ROOT, drat_trim=DRAT_TRIM,
+                          attempt=ATTEMPT, prefix="008", check_cap=check_cap,
+                          meta=dict(shape=shape, seed_scheme=seed_name, k=7 - len(keep), keep=list(keep),
+                                    near_min=len(keep), near_max=None))
+
+
+def stage_a2(cpu_seconds, k=2, only=None, seed=80004, stage="A2"):
+    """Frozen-subset cubes at distance k: C(7, k) per (seed, shape), cap 20 s, proof check 120 s, until the budget is spent."""
+    from itertools import combinations
+    budget = Budget(cpu_seconds)
+    jobs = [(name, S, shape, keep) for name, S in seed_schemes().items() if only in (None, name)
+            for shape in ("reduce71", "reduce64") for keep in combinations(range(7), 7 - k)]
+    lock = threading.Lock()
+
+    def one(job):
+        if not budget.ok():
+            with lock:
+                budget.skipped.append((job[0], job[2], job[3]))
+            return
+        res = run_frozen(*job, seed, 20, 120)
+        budget.take(res)
+        with lock:
+            rec = dict(res, near_max=res["near_max"] if res["near_max"] is not None else 7)
+            record_run(RUNS, attempt=ATTEMPT, stage=stage, format="3x3x3", field="GF(3)",
+                       method=f"SAT cadical, cyclic-invariant Brent equations mod 3, {res['shape']}, orbits {res['keep']} of "
+                              f"seed scheme {res['seed_scheme']} frozen",
+                       best_rank_found=res.get("found_rank"),
+                       verified=bool(res.get("verified_mod3")) if res["status"] == "SAT" else (res.get("drat_trim") == "VERIFIED"),
+                       budget={"max_seconds": 20, "processes": 2, "threads_each": 1}, result=rec)
+            print(json.dumps(res), flush=True)
+
+    with cf.ThreadPoolExecutor(max_workers=2) as ex:
+        list(ex.map(one, jobs))
+    print(json.dumps({"stage": stage, "cpu_s_left": round(budget.left), "not_run": len(budget.skipped),
+                      "not_run_first": budget.skipped[:3]}), flush=True)
+
+
 if __name__ == "__main__":
     if sys.argv[1:] == ["A"]:
         stage_a()
+    elif sys.argv[1:2] == ["A2"]:
+        stage_a2(int(sys.argv[2]))
+    elif sys.argv[1:2] == ["A3"]:  # k = 3 probe on one seed scheme
+        stage_a2(int(sys.argv[2]), k=3, only=sys.argv[3], seed=80005, stage="A3")
     else:
         raise SystemExit(__doc__)

@@ -3,9 +3,9 @@ id: 008-cyclic-f3-lns
 date: 2026-11-22
 target: 3x3x3 rank 22 over F3, cyclic-invariant schemes near the known cyclic rank-23 schemes (finding side; follows 007)
 method: SAT neighbourhoods — "a cyclic scheme of a given split sharing at least m orbits with scheme S", one instance per (S, split, m); a walk at rank 23 and reduction attempts to rank 22, with DRAT proofs for the UNSAT ones
-status: running
-best_rank_found: –
-budget: 2 processes × 1 thread; stage A ≤ 40 CPU-min; stage B ≤ 120 CPU-min; ≤ 160 CPU-min in all
+status: partial
+best_rank_found: 23 (7 new cyclic F3 classes); no 22 within distance 2 of the 4 seed schemes (checked proofs)
+budget: 2 processes × 1 thread; stage A ≤ 40 CPU-min (used in full, including the backup); stage B ≤ 120 CPU-min (skipped)
 ---
 
 # 008: cyclic F3 neighbourhood search
@@ -133,3 +133,41 @@ sound by adding near(S, ·, 6) to it, which costs little with most slots frozen.
 - **Decision rule:** the ladders stall at k ≤ 2, so stage B is skipped. The plan's backup applies, because near() is slow at k = 2. Freeze each subset of 7 − k shared orbits separately:
   21 small instances per (seed, shape) at k = 2. The union of those cubes is the same local theorem as the near() instance, because every scheme sharing ≥ 5 orbits with S
   shares some specific 5. The backup runs within the 24 CPU-min left of stage A's budget.
+
+## Backup result: frozen subsets (stage A2, k = 2, seed 80004; stage A3, k = 3 probe, seed 80005)
+- **A2:** 4 seed schemes × 2 splits × 21 frozen subsets = **168 cubes, all UNSAT, every proof VERIFIED.** The longest solve was 12.7 s.
+  For each (seed, split), the solves summed to 16–66 s. A2 used 834 CPU-s including proofs.
+- **A3:** 006 seed, split (7,1), distance 3. 31 of 35 cubes were run and **all 31 timed out at 20 s**. The other 4 (7,1) cubes and all 35 (6,4) cubes were not run, because the stage A budget was
+  spent (overrun by 21 s).
+
+## Result
+- **No rank-22 scheme.**
+- **Local theorems (checked proofs):** no cyclic-invariant F3 scheme of rank 22, split (7,1) or (6,4), shares 5 or more orbits with any of
+  BILR, the two 005 schemes or the 006 scheme. That is distance ≤ 2 in both splits, from k = 1 (8 near() instances) and k = 2 (168 frozen cubes).
+- **Distance 3 is the wall:** every (7,1) cube tried on the 006 seed timed out at 20 s.
+- **Rank 23: 7 new cyclic F3 classes** from walk steps (k = 2 on every seed, k = 3 on three of them). Each verifies mod 3, is cyclic, and is distinct from the
+  seeds, from the others and from the 51,555 saved F3 rank-23 representatives. Known cyclic F3 rank-23 classes: **11**.
+- The walk is not frozen, unlike the flip walk: near(S, 7 − k, 6) at k = 2 or 3 is SAT in 2–23 s.
+
+## What went wrong / surprised us
+- **The plan's main efficiency claim was wrong for the proof side.** One near() instance at k = 2 timed out at 60 s, while its 21 frozen cubes take 1–13 s each, about 1 min
+  for all 21. The likely cause: the cardinality constraint ranges over 147 equality indicators and propagates weakly, while a frozen orbit is 27 unit clauses that
+  simplify the Brent equations at once. near() is still the right tool for the walk, where we want *any* answer, and the soundness fix it brought still holds.
+- k = 1 → 2 → 3 repeats the abrupt jumps of 006/007: easy, then easy in cubes, then a wall.
+
+## What we would do better
+- Before relying on one formulation's efficiency, time it against the obvious split on one instance. Here that would have cost a minute.
+
+## Next
+This is the decision point named after 007, and the cyclic route has run its course:
+- the proof side stops at ≤ 2 orbits (006, 007);
+- the local search stops at distance 2 from the known schemes (008);
+- the cyclic rank-23 locus is easy to walk but shows no way down.
+
+The recommended 009 is a **write-up of the cyclic F3 results**:
+- the ≤ 2-orbit theorem;
+- the distance-2 local theorems;
+- the 11 cyclic rank-23 classes, with a check script like `scripts/check_reps.py`;
+- the method notes (class cubes, char-poly exclusions, near()).
+
+After that, choose a new direction: a larger symmetry group (for example Z3 × transpose, or S3), or a different field.
