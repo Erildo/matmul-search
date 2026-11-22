@@ -3,9 +3,9 @@ id: 007-cyclic-f3-three-orbits
 date: 2026-11-22
 target: 3x3x3 rank 22 over F3, cyclic-invariant schemes with 3 orbits (split (3,13)); continues 006
 method: SAT (CaDiCaL) on the 006 class cubes with every exclusion on from the start, all orbits forced nonzero, and open cubes split again by the characteristic polynomial of a second orbit matrix; drat-trim proof per cube
-status: running
+status: failed
 best_rank_found: –
-budget: 2 processes × 1 thread; stage A ≤ 21 cubes × 120 s (+ proofs) ≤ 60 CPU-min; stage B ≤ 120 CPU-min; ≤ 180 CPU-min in all
+budget: 2 processes × 1 thread; stage A ≤ 21 cubes × 120 s (+ proofs) ≤ 60 CPU-min; stage B ≤ 120 CPU-min (skipped); 42 CPU-min used
 ---
 
 # 007: cyclic-invariant F3, three orbits
@@ -132,3 +132,31 @@ Notes for stage B, written before it runs:
 - Cube 20 has a single level-2 child. That child pins slot 1's polynomial to the only value it can take, and it drops the lex order between slots 1 and 2.
   It is the stage A cube, slightly weaker, and running it would only repeat a timeout. The same holds, nearly, for cubes with 2–3 children.
   The fewest-children-first order would spend stage B's first runs on exactly these.
+
+## Decision: stage B skipped
+Stage B was skipped, against the plan, and the decision was made after stage A. The reasons:
+- 0/21 at level 1;
+- the 120 CPU-min budget covers about a third of the 181 children;
+- the fewest-children-first order would have opened with near-copies of stage A cubes, as noted above.
+
+The decision rule's last branch (proof side at its limit) is taken on stage A alone.
+
+## Result
+- (3,13): 0 of 21 level-1 cubes closed at 120 s. The theorem stays at **≤ 2 orbits** (006).
+- How the cubes close at 120 s as the number of orbits a grows: a = 2, 21/21; a = 3, 0/21; a = 7, 2/21. Conjugation breaking plus the class exclusions are enough at a = 2, but not at a = 3.
+- Stage 0 code (`all_nonzero`, level-2 cubes, `matmul.satrun`) is tested and kept for later use.
+
+## What went wrong / surprised us
+- The jump from 2 to 3 orbits is abrupt. Most (2,16) cubes took under 5 s, and no (3,13) cube closed in 120 s.
+- The level-2 child counts are lopsided: cubes 0–2 have 15 children each, cube 20 has 1. A child of a cube with few children is barely stronger
+  than its parent. Splitting by polynomial helps most where the classes are small, which is the opposite of where the open cubes are.
+
+## What we would do better
+- Before planning a stage, check that its first jobs differ from runs that already failed. Here the run order would have repeated stage A.
+
+## Next
+008: the finding side. Before planning it, we checked whether a cyclic flip walk could move at all. In the four known cyclic rank-23 schemes, the number of
+(orbit, orbit) member pairs sharing a factor is 1 (BILR), 1, 1 (both 005 schemes) and 3 (006). None share a factor with a fixed term.
+A cyclic flip walk would barely move, and orbit flips cannot change the number of fixed terms. So they can never reach a split of rank 22
+from (7,2): (7,1) needs one fixed term fewer, and an orbit vanishing gives rank 20. 008 therefore uses SAT re-solving of a few freed orbits
+(large-neighbourhood search) in place of flips; see `attempts/008-cyclic-f3-lns.md`.
