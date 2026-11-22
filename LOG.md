@@ -16,7 +16,9 @@ Newest first. One entry per working session: what we did, and where to pick up.
 - Possible side result: at least 37,537 inequivalent GF(2) rank-23 schemes (published: "more than 17,000"). Needs saved representatives before any claim.
 - Ran 004: 180 independent F3 walks × 20 s, each in a different pocket (180 distinct final classes). No rank 22.
 - Only 1 independent repeat pocket against 003 (seed 107), a hint of several hundred pockets or more (very rough).
-- **Pick up here:** choose 005: a deeper pocket search, a symmetry-restricted search, or saving representatives.
+- Saved representatives: 37,537 GF(2) and 51,555 F3 rank-23 schemes, pairwise inequivalent, in `results/reps/`. Independently re-checked with `scripts/check_reps.py`. The rerun reproduced 003 exactly.
+- 005 (cyclic-symmetric rank-22 search over F3) started in a separate session on its own branch.
+- **Pick up here:** 005's results; then check the literature's equivalence notion before calling the GF(2) count new.
 
 ## 2026-11-22: benchmarking the best method
 

@@ -129,6 +129,15 @@ SAT-based searches) and says the total is unknown. Before claiming anything we n
 class (this run deleted the scheme files to save disk), re-verify them, and check that the published equivalence
 uses the same symmetry group. Same for F3 (at least 51,555).
 
+**Representatives saved (2026-11-22).** `python3 -I scripts/save_reps.py 5 20000` reran the same 10 walks and kept
+one verified scheme per class. All 10 walks reproduced exactly the class sets above. Files:
+`results/reps/gf2_333_r23_reps.jsonl.gz` (37,537 schemes, 3.7 MB) and `results/reps/f3_333_r23_reps.jsonl.gz`
+(51,555 schemes, 5.2 MB). An independent check, `python3 -I scripts/check_reps.py <file>`, re-verifies every scheme from
+the file, recomputes its class and confirms all classes are distinct. It passes for both files. So these are now
+**checkable** lower bounds: at least 37,537 pairwise inequivalent rank-23 schemes over GF(2), and at least 51,555
+over GF(3). Before calling the GF(2) number new: confirm that the published "more than 17,000" uses the same notion of
+equivalence (basis changes, term rescaling, reordering, transpose, cyclic), and look for larger counts we may have missed.
+
 **What this means for rank 22 over F3.** 002 walked inside a handful of pockets. If F3 schemes live in many separate
 pockets, a search for 22 should sample *many pockets* (many cheap independent seeds) rather than walk long in a few.
 Which pocket a walk lands in depends on its seed.
@@ -136,5 +145,5 @@ Which pocket a walk lands in depends on its seed.
 ## Next
 004 candidates:
 1. Rank-22 search over F3 across many pockets: hundreds of independent seeds, a short pool search from each, instead of two long runs.
-2. Keep representatives: rerun the walks saving one scheme per class, for a checkable count of inequivalent schemes (GF(2) and F3).
+2. ~~Keep representatives~~ (done, see above).
 3. Map the pockets: what separates them (which invariants differ), and do plus moves of larger size join them?
