@@ -114,3 +114,22 @@ sound by adding near(S, ·, 6) to it, which costs little with most slots frozen.
   - a 2x2 walk step (split (2,1), sharing ≤ 1 orbit) is SAT and gives a verified cyclic rank-7 scheme.
 - Smoke run, not recorded (seed 1, scheme discarded): a walk step at k = 2 from BILR was SAT in 9.5 s. Its scheme verifies mod 3, is cyclic,
   and has class `798722b6a87a9844`. That differs from BILR's class and from all 51,555 saved F3 rank-23 classes. So the walk is not frozen.
+
+## Stage A result (seed 80001, 15.6 of 40 CPU-min)
+| seed scheme | reduce71 k=1 | reduce71 k=2 | reduce64 k=1 | reduce64 k=2 | walk k=2 | walk k=3 | walk k=4 |
+|---|---|---|---|---|---|---|---|
+| 006 | UNSAT 5.4 s ✓ | TIMEOUT 60 s | UNSAT 1.9 s ✓ | TIMEOUT | SAT 1.6 s | SAT 10.9 s | TIMEOUT |
+| BILR | UNSAT 4.1 s ✓ | TIMEOUT | UNSAT 2.1 s ✓ | TIMEOUT | SAT 16.2 s | TIMEOUT | TIMEOUT |
+| 005-cadical | UNSAT 7.4 s ✓ | TIMEOUT | UNSAT 3.7 s ✓ | TIMEOUT | SAT 12.2 s | SAT 11.8 s | TIMEOUT |
+| 005-kissat | UNSAT 4.8 s ✓ | TIMEOUT | UNSAT 2.7 s ✓ | TIMEOUT | SAT 22.7 s | SAT 4.5 s | TIMEOUT |
+
+✓ = DRAT proof VERIFIED by drat-trim.
+
+- **Local theorems (k = 1), 8 of 8:** no cyclic F3 rank-22 scheme of split (7,1) or (6,4) shares 6 orbits with any of the four seed schemes.
+- **k = 2 times out on all 8 ladders.** As in 007 (2 → 3 orbits), the step from k = 1 to k = 2 is abrupt.
+- **Walk: 7 SAT answers, 7 new classes.** All are verified mod 3 and cyclic, all differ from their seed's class and from each other, and none is among the 51,555 saved F3
+  rank-23 representatives: `6f888e94663cd913`, `ec8ce52996e9a191`, `3f98b9cc15d7710b`, `ac0136d1e3ad372d`, `6d732e700b4ee825`,
+  `ad5563bc5f3b2158`, `346a978816ebcbb6`. Saved as `results/f3/008_*_walk_*.json`. Known cyclic F3 rank-23 classes: 4 → 11.
+- **Decision rule:** the ladders stall at k ≤ 2, so stage B is skipped. The plan's backup applies, because near() is slow at k = 2. Freeze each subset of 7 − k shared orbits separately:
+  21 small instances per (seed, shape) at k = 2. The union of those cubes is the same local theorem as the near() instance, because every scheme sharing ≥ 5 orbits with S
+  shares some specific 5. The backup runs within the 24 CPU-min left of stage A's budget.
