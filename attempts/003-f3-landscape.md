@@ -3,9 +3,9 @@ id: 003-f3-landscape
 date: 2026-11-22
 target: 3x3x3 rank 23 over F3, with GF(2) as the control
 method: find_alternative_schemes (ternary_flip_graph) + our own orbit invariants
-status: planned
-best_rank_found: –
-budget: 2 processes × 1 thread × 10 min per stage (quieter than 002)
+status: partial
+best_rank_found: 23 (no rank change was sought)
+budget: 2 processes × 1 thread, at most 20000 schemes or 300s per field
 ---
 
 # 003: how many genuinely different rank-23 schemes exist over F3?
@@ -53,11 +53,59 @@ few hundred, the leveling off is our method, not F3.
 - Both level off: our invariant or the generator is too weak. Improve them before drawing conclusions.
 
 ## Result
-(to fill in)
+**Invariants** (`src/matmul/invariants.py`, tests in `tests/test_invariants.py`, 80 tests pass). The tests check
+that every symmetry move maps correct schemes to correct schemes (on naive, Strassen and an F3 rank-23 scheme)
+and leaves the invariant unchanged, alone and in random combinations.
+
+**002's schemes:** all 165 are pairwise inequivalent (165 classes, 96 term profiles).
+
+**Smoke test** (F3, seed 1, 15s, not recorded in runs.jsonl): 40,223 schemes. In the first 10,000: 98/100,
+975/1,000, 9,608/10,000 distinct classes.
+
+**Main run** `python3 -I scripts/run_003.py 20000 300` (generator seed 3, 1 thread each; lines in `results/runs.jsonl`):
+
+| Field | Schemes | Failed verify | Classes (lower bound) | Term profiles | Classes after 1k / 3k / 10k / 20k |
+|---|---|---|---|---|---|
+| F3 | 20,000 (5.8s) | 0 | **8,176** | 89 | 982 / 2,928 / 6,746 / 8,176 |
+| GF(2) | 20,000 (12.6s) | 0 | **15,808** | 303 | 997 / 2,783 / 8,126 / 15,808 |
+
+Reading it:
+- Both landscapes are large: thousands of proven-inequivalent rank-23 schemes within seconds of one seed.
+  The 164 in 002 came from the pool search, not from a small landscape.
+- F3 slows down: between 10k and 20k schemes only 14% were new classes (1,430 of 10,000), against 77% for
+  GF(2). GF(2) also has about 3 times as many term profiles.
+- This isn't the invariant being weaker over F3. The F3 invariant uses c ∈ {1,2}, GF(2)'s only c = 1, so
+  it's finer over F3 if anything.
+- But a single walk explores near its seed, and the seed matters (seed 1 gave 96% new at 10k, seed 3 only 67%).
+  So the slowdown may be one walk's neighbourhood running out, not F3 as a whole.
+
+**Against the decision rule:** neither fixed outcome. F3 doesn't level off (new classes still appear at the
+end), but it slows clearly, while GF(2) keeps growing. Intermediate, so no branch is chosen yet.
 
 ## What went wrong / surprised us
+- The generator is extremely fast (40k schemes in 15s). The cap has to be a scheme count, not a time.
+- Spotlight indexed the 40k smoke files and pushed the load average to 15. `scratch/.metadata_never_index` now marks the folder.
+- The decision rule didn't cover "slows but doesn't stop". Next time state a threshold for the slope too.
 
 ## What we would do better
+- Several walks from several unrelated seeds, then count classes in the *union*. One walk can't tell its own neighbourhood from the whole landscape.
+- Fix the slope threshold in advance (for example, "new-class rate below 5% over the last 20%").
+
+## Follow-up: 5 unrelated seeds per field (rule fixed before running, 2026-11-22)
+Setup: for each field and each k = 1..5, a fresh rank-23 scheme from the naive scheme (`flip_graph --seed k`),
+then `find_alternative_schemes --seed k`, 20,000 schemes. Every scheme is verified and classified. Per field we report:
+- per walk: classes, and the **late rate** (share of new classes among the walk's last 20% of schemes);
+- **overlap**: classes found by two or more walks, and for each pair of walks i, j the capture-recapture
+  estimate N̂ = cᵢ·cⱼ / mᵢⱼ (cᵢ classes in walk i, mᵢⱼ shared). This estimates the size of the region the walks sample.
+
+Rule:
+- **Small**: F3 walks share at least 10% of their classes on average (mean mᵢⱼ / min(cᵢ, cⱼ) ≥ 0.10), and the
+  GF(2) share is at least 5 times lower → F3 region of about N̂ classes. 004 studies it directly.
+- **Large**: F3 walks share less than 1% → treat F3 as large. 004 changes the exploration method.
+- **In between** (1–10%): report N̂ as a rough size and choose 004 on cost.
+
+(Results in "Follow-up results" below.)
 
 ## Next
-004, chosen by the decision rule above.
+Settle the intermediate result cheaply: F3 and GF(2), 5 unrelated seeds each, 20k schemes per seed, count classes
+in the union and the per-field slope. Then apply the decision rule (with the slope threshold) and choose 004.

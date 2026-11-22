@@ -11,7 +11,8 @@ Newest first. One entry per working session: what we did, and where to pick up.
 - Ran 002 stage B: 2×30 min over F3, no rank 22. Rank 23 reached easily, but only 164 structurally different rank-23 schemes turned up (vs 2000 at ranks 24–26).
 - Found that the tool's "structure" uniqueness is a flip fingerprint, not equivalence. The 164 isn't a real count.
 - Planned 003: count F3 rank-23 classes with our own invariants, with GF(2) as the control (attempts/003-f3-landscape.md).
-- **Pick up here:** 003 step 1, the invariants module and its tests.
+- Ran 003: built and tested orbit invariants. Both F3 and GF(2) have thousands of proven-inequivalent rank-23 schemes (8,176 and 15,808 classes in 20k schemes each). F3 slows down (14% new in the last 10k vs 77% for GF(2)), but from one seed only.
+- **Pick up here:** settle 003 with 5 seeds per field, then choose 004.
 
 ## 2026-11-22: benchmarking the best method
 
