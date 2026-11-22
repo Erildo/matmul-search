@@ -240,6 +240,32 @@ def class_index(x, reps=None):
     return reps.index(_key(to_rep(x)[0]))
 
 
+def charpoly(x):
+    """(trace, sum of principal 2x2 minors, det) of a 3x3 matrix mod 3: the characteristic polynomial."""
+    t = (x[0][0] + x[1][1] + x[2][2]) % P
+    m = lambda a, b: x[a][a] * x[b][b] - x[a][b] * x[b][a]
+    s = (m(0, 1) + m(0, 2) + m(1, 2)) % P
+    d = (x[0][0] * (x[1][1] * x[2][2] - x[1][2] * x[2][1]) - x[0][1] * (x[1][0] * x[2][2] - x[1][2] * x[2][0])
+         + x[0][2] * (x[1][0] * x[2][1] - x[1][1] * x[2][0])) % P
+    return (t, s, d)
+
+
+@lru_cache(maxsize=None)
+def charpoly_exclusions(c: int):
+    """Characteristic polynomials carried only by classes of index < c (the zero matrix counts as allowed).
+
+    In cube c every orbit matrix has class >= c, so none of these can occur.
+    """
+    reps = list(_class_rep_keys(3))
+    top = {}
+    for rep, members in matrix_classes(3).items():
+        i = reps.index(rep) if any(rep) else len(reps)
+        for k in members:
+            T = charpoly(_unkey(k, 3))
+            top[T] = max(top.get(T, -1), i)
+    return tuple(sorted(T for T, i in top.items() if i < c))
+
+
 def rotate(t, r):
     """The r-th member of the sigma-orbit of t, as the orbit representative."""
     for _ in range(r % 3):
@@ -299,7 +325,7 @@ class CyclicF3CNF:
     """
 
     def __init__(self, n: int, a: int, b: int, fixed_sum: bool = True, break_sym: bool = True,
-                 pin_u1=None, min_class: int = 0):
+                 pin_u1=None, min_class: int = 0, exclude_charpoly: bool = False):
         self.n, self.a, self.b = n, a, b
         self.pin_u1 = pin_u1
         self.min_class = min_class
@@ -343,6 +369,8 @@ class CyclicF3CNF:
                     if k == 0 and m == 0 and pin_u1 is not None:
                         continue
                     self._not_rank1(self.orb[k][m], only_trace_nonzero=(min_class == 1))
+                    if exclude_charpoly:
+                        self._charpoly_not_in(self.orb[k][m], charpoly_exclusions(min_class))
             self.class_clauses = (c0, len(self.clauses))
         if break_sym:
             for k in range(a):
@@ -483,6 +511,21 @@ class CyclicF3CNF:
             self.clauses += [[-y, -l] for pq in vals for l in pq]  # y -> x == 0
             self.aux_defs.append(("is0", y, tuple(vals)))
         self.clauses.append(big + [y])
+
+    def _charpoly_not_in(self, vals, forbidden):
+        """The characteristic polynomial (trace, c2, det) of x is none of the forbidden triples."""
+        if not forbidden:
+            return
+        x = lambda i, j: vals[i * 3 + j]
+        neg = lambda z: (z[1], z[0])
+        tr = self._add(self._add(x(0, 0), x(1, 1)), x(2, 2))
+        minor = lambda a, b, c, d: self._add(self._prod2(x(a, c), x(b, d)), neg(self._prod2(x(a, d), x(b, c))))
+        c2 = self._add(self._add(minor(0, 1, 0, 1), minor(0, 2, 0, 2)), minor(1, 2, 1, 2))
+        det = self._add(self._add(self._prod2(x(0, 0), minor(1, 2, 1, 2)), neg(self._prod2(x(0, 1), minor(1, 2, 0, 2)))),
+                        self._prod2(x(0, 2), minor(1, 2, 0, 1)))
+        ne = lambda z, v: [z[0], z[1]] if v == 0 else ([-z[0]] if v == 1 else [-z[1]])
+        for t, s2, d in forbidden:
+            self.clauses.append(ne(tr, t) + ne(c2, s2) + ne(det, d))
 
     def _first_nonzero_is_one(self, vals):
         prefix = []

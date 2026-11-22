@@ -278,3 +278,30 @@ def test_known_schemes_in_minimal_class_form_satisfy_their_cube():
                         cnf1 = CyclicF3CNF(3, 7, 2, pin_u1=rep1, min_class=1)
                         assert cnf1.satisfied(cnf1.witness(o4, f4))
                         break
+
+
+@pytest.mark.timeout(60)
+@pytest.mark.parametrize("c", [10, 19])
+def test_charpoly_exclusion_gadget(c):
+    from matmul.cyclic import charpoly, charpoly_exclusions
+    rng = random.Random(20 + c)
+    forb = set(charpoly_exclusions(c))
+    reps = class_reps()
+    # soundness of the table: no class >= c has a member with a forbidden characteristic polynomial
+    for rep, members in matrix_classes(3).items():
+        if any(rep) and reps.index([list(rep[i:i + 3]) for i in (0, 3, 6)]) >= c:
+            assert not any(charpoly([list(m[i:i + 3]) for i in (0, 3, 6)]) in forb for m in members)
+    cnf = CyclicF3CNF(3, 2, 1, pin_u1=reps[c], min_class=c, exclude_charpoly=True)
+    lo, hi = cnf.class_clauses
+    seen = set()
+    for _ in range(300):
+        mat = lambda: ([[0] * 3 for _ in range(3)] if rng.random() < 0.5
+                       else [[rng.randrange(3) for _ in range(3)] for _ in range(3)])
+        orbits = [(reps[c], mat(), mat()), (mat(), mat(), mat())]
+        w = cnf.witness(orbits, [mat()])
+        ok = all(any(w.get(abs(l)) == (l > 0) for l in cl) for cl in cnf.clauses[lo:hi])
+        mats = [m for k, t in enumerate(orbits) for j, m in enumerate(t) if (k, j) != (0, 0)]
+        want = not any(_rank(m) == 1 or charpoly(m) in forb for m in mats)
+        assert ok == want
+        seen.add(want)
+    assert seen == {True, False}

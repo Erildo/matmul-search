@@ -5,7 +5,7 @@ representative of class c, and (minimal class form) no orbit matrix lies in clas
 rank one (c >= 2). c = None is the unpinned 005 instance. Solving, decoding, verifying, saving and the
 drat-trim check work as in scripts/run_005.py. Every instance gets one line in results/runs.jsonl.
 
-usage: python3 -I scripts/run_006.py STAGE        (STAGE = A, B or C)
+usage: python3 -I scripts/run_006.py STAGE        (STAGE = A, B, C, B2 or C2)
 """
 
 from __future__ import annotations
@@ -36,13 +36,14 @@ def solver_cmd(solver, seed, cnf, proof=None):
     return cmd
 
 
-def run_instance(n, a, b, c, solver, seed, cap, check_cap=None):
-    name = f"n{n}_a{a}_b{b}_" + ("free" if c is None else f"c{c}") + f"_{solver}_s{seed}"
+def run_instance(n, a, b, c, solver, seed, cap, check_cap=None, excl=False):
+    name = f"n{n}_a{a}_b{b}_" + ("free" if c is None else f"c{c}") + ("x" if excl else "") + f"_{solver}_s{seed}"
     WORK.mkdir(parents=True, exist_ok=True)
-    enc = CyclicF3CNF(n, a, b) if c is None else CyclicF3CNF(n, a, b, pin_u1=class_reps(n)[c], min_class=c)
+    enc = CyclicF3CNF(n, a, b) if c is None else CyclicF3CNF(n, a, b, pin_u1=class_reps(n)[c], min_class=c,
+                                                             exclude_charpoly=excl)
     cnf = WORK / f"{name}.cnf"
     cnf.write_text(enc.dimacs())
-    out = dict(n=n, a=a, b=b, rank_max=3 * a + b, cube=c, solver=solver, seed=seed, cap_seconds=cap,
+    out = dict(n=n, a=a, b=b, rank_max=3 * a + b, cube=c, exclude_charpoly=excl, solver=solver, seed=seed, cap_seconds=cap,
                vars=enc.nv, clauses=len(enc.clauses), equations=len(enc.equations))
     t0 = time.time()
     try:
@@ -90,6 +91,8 @@ def run_instance(n, a, b, c, solver, seed, cap, check_cap=None):
 def record(res, stage, cap):
     best = res.get("found_rank")
     cube = "unpinned" if res["cube"] is None else f"class cube {res['cube']}"
+    if res.get("exclude_charpoly"):
+        cube += " with char-poly exclusion"
     record_run(ROOT / "results" / "runs.jsonl", attempt=ATTEMPT, stage=stage,
                format=f"{res['n']}x{res['n']}x{res['n']}", field="GF(3)",
                method=f"SAT {res['solver']} on cyclic-invariant Brent equations mod 3, split a={res['a']} b={res['b']}, {cube}",
@@ -98,10 +101,10 @@ def record(res, stage, cap):
                budget={"max_seconds": cap, "processes": 2, "threads_each": 1}, result=res)
 
 
-def run_many(jobs, stage, cap, check_cap):
+def run_many(jobs, stage, cap, check_cap, excl=False):
     results = []
     with cf.ThreadPoolExecutor(max_workers=2) as ex:
-        futs = [ex.submit(run_instance, *j, cap, check_cap) for j in jobs]
+        futs = [ex.submit(run_instance, *j, cap, check_cap, excl) for j in jobs]
         for f in futs:
             res = f.result()
             record(res, stage, cap)
@@ -119,5 +122,9 @@ if __name__ == "__main__":
         run_many([(3, 2, 16, c, "cadical", 60011) for c in range(21)], "B", 120, 600)
     elif stage == "C":
         run_many([(3, 7, 1, c, "cadical", 60012) for c in range(21)], "C", 120, 600)
+    elif stage == "B2":
+        run_many([(3, 2, 16, c, "cadical", 60013) for c in (10, 19)], "B2", 300, 900, excl=True)
+    elif stage == "C2":
+        run_many([(3, 7, 1, c, "cadical", 60014) for c in range(10, 21)], "C2", 120, 600, excl=True)
     else:
         raise SystemExit(__doc__)

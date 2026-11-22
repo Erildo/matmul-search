@@ -124,6 +124,38 @@ trace on random matrices, and that a scheme pinned at a non-minimal class is rej
 - Cube sizes for split (2,16): unpinned 21,392 vars and 136,148 clauses; cube 0 has 21,339 / 135,996; cube 1 has 21,634 / 137,896.
 - Test suite: 115 passed.
 
+## Stage A result (rank 23, split (7,2), cap 300 s, CaDiCaL)
+| instance | seed | status | seconds |
+|---|---|---|---|
+| cube 0 | 60001 | SAT, rank 23, verified mod 3, cyclic, 7 orbits + 2 fixed | 135.6 |
+| cube 0 | 60002 | TIMEOUT | 300 |
+| unpinned | 60003 | TIMEOUT | 300 |
+| unpinned | 60004 | TIMEOUT | 300 |
+
+- Pinned found 23 at least as fast as unpinned (1 of 2 against 0 of 2). By the decision rule, go on with pinning for both finding and proofs.
+- The seed spread is large. 005's 257 s was a lucky draw, not a typical time.
+- The new scheme `results/f3/006_3x3x3_rank23_n3_a7_b2_c0_cadical_s60001.json` has invariant class `eebc48753638175a`. That differs from
+  BILR (`094008dc304fad88`), from both 005 schemes, and from all 51,555 saved F3 rank-23 representatives. So it is a new inequivalent
+  scheme. Our count of known cyclic F3 rank-23 classes is now 4, including BILR.
+
+## Stage B result (split (2,16), 21 cubes × 120 s, CaDiCaL seed 60011)
+**19 of 21 cubes UNSAT, every proof VERIFIED by drat-trim.** Cubes 0–9, 11–15 and 20 closed in 0.9–5.1 s. Cubes 16, 17 and 18 took
+54, 115 and 64 s. **Cubes 10 and 19 timed out.** For comparison, 005 ran the whole split for 10 min and got nowhere.
+
+## Stage C result (split (7,1), 21 cubes × 120 s, seed 60012)
+All 21 cubes timed out. Nothing was found and nothing was refuted. Seven orbits are far harder than two.
+
+## Amendment before stages B2 and C2: characteristic-polynomial exclusion
+New idea (the decision rule asks for one before any rerun). For 3×3 matrices the characteristic polynomial (tr, c₂, det) is cheap to
+encode. In cube c every orbit matrix has class ≥ c, so a characteristic polynomial carried **only** by classes < c cannot occur. (The zero
+matrix counts as allowed.) `charpoly_exclusions(c)` lists these, and `exclude_charpoly=True` adds one clause per forbidden polynomial per
+orbit matrix. Cube 10 excludes 8 polynomials, which removes classes 0, 2, 3, 4, 5, 7 and 8 entirely. Cube 19 excludes 22, leaving orbit
+matrices only classes 6, 14, 15, 19, 20 (after the rank-1 ban) and zero. Soundness is tested: no class ≥ c has a member with an
+excluded polynomial, and the gadget agrees with brute force.
+- **B2:** (2,16) cubes 10 and 19 with the exclusion, cap 300 s, proof check 900 s, seed 60013.
+- **C2:** (7,1) cubes 10–20 with the exclusion, cap 120 s, seed 60014. These are the cubes where the exclusion bites most.
+- Budget so far: A ≈ 20, B ≈ 11 and C = 42 CPU-min. B2 adds ≤ 10 and C2 ≤ 22, for a total of ≤ 105, within the 115 bound.
+
 ## Result
 (to fill in)
 
