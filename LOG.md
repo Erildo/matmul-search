@@ -2,6 +2,15 @@
 
 Newest first. One entry per working session: what we did, and where to pick up.
 
+## 2026-11-22: attempt 005, cyclic-invariant schemes over F3 by SAT
+
+- Literature (PRIOR_WORK.md): Z3-invariant rank-23 schemes exist with integer coefficients (Ballard et al. 2018). SAT under cyclic symmetry has only been run over GF(2) (Yang 2024, stuck past rank 15). Moosbauer–Poole's symmetric flip graphs are GF(2) only. ternary_flip_graph has no symmetric mode. We found no Z3-invariant search over F3.
+- Derived: over F3, fixed terms are exactly (x, x, xᵀ), and the fixed matrices must sum to I. So rank 22 splits as 3a + b with (a, b) in {(7,1), …, (1,19)}, 198 unknowns in every case.
+- Built `matmul.cyclic` (CNF encoder, tested), installed CaDiCaL and Kissat, and built drat-trim in vendor/.
+- Sanity checks passed: 2x2 rank 7 found and rank 6 refuted with checked proofs. 3x3 rank 23 found from scratch in 257 s (CaDiCaL) and 907 s (Kissat): two new inequivalent cyclic F3 schemes.
+- Rank 22: split (1,19) **UNSAT, proof checked by drat-trim**. The other six splits timed out at 10 min each. So: no cyclic-invariant F3 rank-≤22 scheme with ≤ 1 orbit. Everything else is open.
+- **Pick up here:** 006: add conjugation symmetry breaking, try to close (2,16), and spend a longer or cube-and-conquer run on (7,1), the 22 analogue of the split that solves fast at 23.
+
 ## 2026-11-22: planning 002
 
 - Found that 3x3x3 rank over F2 and Z is now proved to be 23 (arXiv:2610.11823). Our GF(2) plan was dead on arrival.
