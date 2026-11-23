@@ -102,7 +102,7 @@ Evidence only, not proof, to be reported as such:
 - **Stage 5: review and release.**
   - Read the document cold, starting with its weakest link.
   - Update LOG.md (007, 008 and 009 are missing), TARGETS.md and README.md.
-  - Commit, merge into `main`, delete the branch, push.
+  - Commit to `main` and push. As of 2026-11-23 there are no branches: everything goes straight to `main`, and each run's log is kept in `results/logs/<attempt>/`.
   - Offer a shareable web page as a separate step.
 
 ## Decision rule (fixed before running)
@@ -113,3 +113,25 @@ Evidence only, not proof, to be reported as such:
 
 ## Out of scope
 New searches. Gaps the write-up exposes go under Next.
+
+## Stage results so far
+- **Stage 0 (literature, 2026-11-23).** Two web searches:
+  - (1) cyclic/Z3-invariant 3x3 decompositions over GF(3) with SAT;
+  - (2) 2025–26 arXiv work on 3x3 rank 22 with symmetry or flip graphs in characteristic 3.
+
+  Neither found a cyclic-invariant search over F3. New or confirmed items: Perminov's ternary meta flip graphs ([arXiv:2511.20317](https://arxiv.org/abs/2511.20317)) work with
+  {−1, 0, 1} coefficients and sign symmetry only, with no Z3 constraint. Rudich and Rousseau ([arXiv:2610.01639](https://arxiv.org/abs/2610.01639)) prove ≥ 22 over Z and F2, and are already in PRIOR_WORK.
+  **Novelty claims softened** to "as of 2026-11-23 we found no prior cyclic-invariant search over F3". No claim of being first.
+- **Stage 2.** The equation-map test passes for (2,2,1), (2,1,3), (3,1,19), (3,2,16), (3,7,1) and (3,6,4). Every equation is checked at every one of its index tuples against the tensor
+  computed from `expand`, and the gate network agrees with the equations. Suite: 137 passed.
+- **Stage 3.** `results/f3/cyclic_rank23.jsonl` holds 11 schemes, and `scripts/check_cyclic_rank23.py check` reports 11 distinct classes and no failures. **None of the 11, BILR included, is among
+  the 51,555 saved F3 rank-23 classes**, so the cyclic schemes are not in the part of the F3 locus the unrestricted walks visited.
+  The invariants turned up a pattern shared by all 11 (recorded as an observation in the write-up):
+  - split (7,2);
+  - one orbit whose three matrices all have rank 2;
+  - the other six orbits have rank profile (1,1,1) or (1,1,2);
+  - fixed matrices of ranks 1 and 2;
+  - no rank-3 matrix anywhere.
+
+  Split (7,1) needs I as its fixed term, which breaks this pattern.
+- **Stage 4.** Drafted in `writeups/cyclic-f3.md`. The re-check result is filled in when stage 1 ends.
