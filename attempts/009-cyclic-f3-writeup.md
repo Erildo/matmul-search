@@ -3,7 +3,7 @@ id: 009-cyclic-f3-writeup
 date: 2026-11-23
 target: a checkable write-up of what attempts 005–008 established about cyclic-invariant 3x3x3 schemes over F3
 method: independent re-check of every proved statement (two solvers, two checked proofs, CNFs regenerated from code), an encoder-vs-tensor test, a data release of the cyclic rank-23 schemes, and a self-contained document with every claim tied to its evidence
-status: running
+status: success
 best_rank_found: – (no search)
 budget: 2 processes × 1 thread; re-check ≤ 90 CPU-min; no new searches
 ---
@@ -135,3 +135,26 @@ New searches. Gaps the write-up exposes go under Next.
 
   Split (7,1) needs I as its fixed term, which breaks this pattern.
 - **Stage 4.** Drafted in `writeups/cyclic-f3.md`. The re-check result is filled in when stage 1 ends.
+- **Stage 1 (re-check).** **380 of 380 runs UNSAT, every proof VERIFIED by drat-trim.**
+  - T1 has 22 instances, and T2 has 168 cubes; each was run with both CaDiCaL and Kissat. (0,22) is trivially UNSAT.
+  - Longest solve: 149 s for T1, 8.6 s for T2. Total 41.6 CPU-min of the 90 budgeted.
+  - Per-instance lines with CNF hashes are in `results/f3/recheck_009.jsonl`; the raw log is in `results/logs/009-cyclic-f3-writeup/recheck.log`.
+
+## Result
+- `writeups/cyclic-f3.md`: T1 and T2, each with two independent checked proofs per instance, plus D1 (11 classes) and the evidence of where the method stops.
+- Re-checkable with one command (`scripts/recheck_cyclic_f3.py`, with `--quick` for T1 alone).
+- The encoder is tested against the tensor directly, at every index position.
+- No claim withdrawn. No new search was run.
+
+## What went wrong / surprised us
+- None of the 11 cyclic classes, BILR included, appears among the 51,555 classes from the unrestricted F3 walks of 003. The cyclic schemes live in a part of the locus those walks never visited.
+- All 11 share one structure: one orbit whose three matrices have rank 2, fixed matrices of ranks 1 and 2, and no rank-3 matrix. Split (7,1) would need I as its fixed term.
+
+## What we would do better
+- Keep the DRAT proofs' inputs reproducible from the start: a script that regenerates every CNF of a claim, written when the claim is first made, not two attempts later.
+
+## Next
+010. Two candidates, in order of promise:
+1. **A larger symmetry group over F3.** Over F2, Yang ruled out rank ≤ 21 with the cyclic symmetry plus one more group element, where the cyclic symmetry alone stalled at 15.
+   The same move over F3, the cyclic symmetry plus a transpose-type involution (S₃), shrinks the unknowns again. That could make rank 22 decidable for that group, in either direction.
+2. **Search (7,1) built around I.** Use the structural observation: search (7,1) without starting near the known schemes, with structural constraints (for example, one orbit of rank profile (2,2,2)) as cubes.

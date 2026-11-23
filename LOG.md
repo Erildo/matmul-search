@@ -2,6 +2,18 @@
 
 Newest first. One entry per working session: what we did, and where to pick up.
 
+## 2026-11-23: attempts 007–009, end of the cyclic F3 route
+
+- **007:** split (3,13) with every exclusion on, plus "all orbits nonzero" (allowed by 006's theorem). **0 of 21 cubes closed at 120 s.** Stage B was skipped by decision. The proof side stops at ≤ 2 orbits.
+- **008:** a cyclic flip walk is pointless: the known schemes have 1–3 flip moves, and flips cannot change the number of fixed terms. Replaced by SAT neighbourhoods.
+  - **Local theorem:** no cyclic rank-22 scheme, split (7,1) or (6,4), shares ≥ 5 orbits with any of the four known schemes (168 frozen cubes). Distance 3 times out.
+  - **7 new cyclic rank-23 classes** from walk steps.
+- **009:** write-up `writeups/cyclic-f3.md`.
+  - Re-check: 380/380 runs UNSAT with proofs verified (CaDiCaL and Kissat, drat-trim). Encoder tested against the tensor directly.
+  - 11 cyclic F3 rank-23 classes released (`results/f3/cyclic_rank23.jsonl`). All share one structure (no rank-3 matrix, one (2,2,2) orbit).
+- Workflow change: no branches. Everything goes to `main`, and run logs go in `results/logs/`.
+- **Pick up here:** choose 010. The candidates are listed in `attempts/009-cyclic-f3-writeup.md` → Next: a larger symmetry group (S₃) over F3, or a (7,1) search built around I.
+
 ## 2026-11-22: attempt 006, class cubes for cyclic F3 schemes
 
 - Split each case of 005 into 21 SAT cubes, one per class of nonzero 3x3 matrices up to conjugation and sign. Cube c pins the simplest orbit

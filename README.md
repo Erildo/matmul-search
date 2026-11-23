@@ -50,4 +50,4 @@ PYTHONPATH=src python3 -m matmul.verify my.json --mod 2
 
 ## Status
 
-Attempts 000–006 done. See LOG.md for the latest state.
+Attempts 000–009 done. See LOG.md for the latest state, and `writeups/cyclic-f3.md` for the cyclic F3 results.

@@ -4,7 +4,7 @@
 
 ## Summary
 We searched for rank-22 schemes for 3×3 matrix multiplication over F3 that are invariant under the cyclic symmetry of the matrix multiplication tensor.
-We found none. Two kinds of rank 22 are now ruled out, each with machine-checked proofs from two independent SAT solvers:
+We found none. Two kinds of rank 22 are now ruled out. Each instance has two proofs, from two independent SAT solvers, and both were checked by drat-trim:
 - **T1.** There is no cyclic-invariant scheme of rank ≤ 22 with at most 2 orbits.
 - **T2.** There is no cyclic-invariant scheme of rank 22 (split (7,1) or (6,4)) that shares 5 or more of its 7 orbits with any of four known cyclic rank-23 schemes.
 
@@ -132,7 +132,14 @@ python3 -I scripts/check_cyclic_rank23.py check    # D1
 The re-check rebuilds every CNF from the code and records each one's SHA-256 in [`results/f3/recheck_009.jsonl`](../results/f3/recheck_009.jsonl).
 It needs `cadical`, `kissat` and drat-trim (`vendor/drat-trim`; build instructions in attempt 006).
 
-**Re-check result:** RECHECK_RESULT
+**Re-check result (2026-11-23, attempt 009): 380 of 380 runs UNSAT, every proof VERIFIED by drat-trim.**
+
+| claim | instances | CaDiCaL | Kissat | longest solve |
+|---|---|---|---|---|
+| T1 | 22 ((1,19) and the 21 cubes of (2,16)), plus (0,22) trivially UNSAT | 22/22 verified | 22/22 verified | 149 s (CaDiCaL), 111 s (Kissat) |
+| T2 | 168 frozen cubes | 168/168 verified | 168/168 verified | 7.3 s / 8.6 s |
+
+Total: 41.6 CPU-min including proof checks. The 19 T1 cubes first proved in 006 without the polynomial exclusion were re-proved here with it, and either version is valid under the lemma.
 
 **Trusted base.** What is proved:
 - each CNF is unsatisfiable (two solvers, each proof checked by drat-trim);
