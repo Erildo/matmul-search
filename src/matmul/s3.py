@@ -156,27 +156,70 @@ class S3F3CNF(CyclicF3CNF):
             self._tie(self.fix[k], tr(self.fix[k]))
         self.tie_clauses = (c0, len(self.clauses))
         if break_sym:
-            for k in range(a):
-                self._first_nonzero_is_one(self.orb[k][0])
-                self._first_nonzero_is_one(self.orb[k][1])
-            for k in range(a - 1):
-                self._lex_leq(self._bits(sum(self.orb[k], [])), self._bits(sum(self.orb[k + 1], [])))
-            for k in range(2 * a, 2 * a + b):
-                self._first_nonzero_is_one(self.orb[k][0])
-            for k in range(2 * a, 2 * a + b - 1):
-                self._lex_leq(self._bits(sum(self.orb[k], [])), self._bits(sum(self.orb[k + 1], [])))
-            for k in range(c):
-                self._lex_leq(self._bits(self.fix[k]), self._bits(tr(self.fix[k])))
-            for k in range(c - 1):
-                self._lex_leq(self._bits(self.fix[k]), self._bits(self.fix[k + 1]))
-            for k in range(2 * c, 2 * c + d - 1):
-                self._lex_leq(self._bits(self.fix[k]), self._bits(self.fix[k + 1]))
+            self._s3_break(n, a, b, c, d)
+
+    def _s3_break(self, n, a, b, c, d):
+        tr = lambda vals: [vals[j * n + i] for i in range(n) for j in range(n)]
+        for k in range(a):
+            self._first_nonzero_is_one(self.orb[k][0])
+            self._first_nonzero_is_one(self.orb[k][1])
+        for k in range(a - 1):
+            self._lex_leq(self._bits(sum(self.orb[k], [])), self._bits(sum(self.orb[k + 1], [])))
+        for k in range(2 * a, 2 * a + b):
+            self._first_nonzero_is_one(self.orb[k][0])
+        for k in range(2 * a, 2 * a + b - 1):
+            self._lex_leq(self._bits(sum(self.orb[k], [])), self._bits(sum(self.orb[k + 1], [])))
+        for k in range(c):
+            self._lex_leq(self._bits(self.fix[k]), self._bits(tr(self.fix[k])))
+        for k in range(c - 1):
+            self._lex_leq(self._bits(self.fix[k]), self._bits(self.fix[k + 1]))
+        for k in range(2 * c, 2 * c + d - 1):
+            self._lex_leq(self._bits(self.fix[k]), self._bits(self.fix[k + 1]))
 
     def _tie(self, xs, ys):
         for (p, q), (p2, q2) in zip(xs, ys):
             if (p, q) == (p2, q2):
                 continue
             self.clauses += [[-p, p2], [p, -p2], [-q, q2], [q, -q2]]
+
+
+class S3NativeF3CNF(CyclicF3CNF):
+    """The same instance as S3F3CNF, but the S3 ties are built into the variables instead of added as
+    equality clauses: partner slots and transposes reuse the base values, and symmetric matrices have
+    n(n+1)/2 free values. Equations that become identical are then merged by the cyclic encoder's
+    deduplication (3x3: 249 sigma-equations -> 138). Same slot layout, symmetry breaking and decoding.
+    """
+
+    def __init__(self, n: int, a: int, b: int, c: int, d: int, fixed_sum: bool = True, break_sym: bool = True):
+        self.s3 = (a, b, c, d)
+        super().__init__(n, 2 * a + b, 2 * c + d, fixed_sum=fixed_sum, break_sym=False)
+        if break_sym:
+            S3F3CNF._s3_break(self, n, a, b, c, d)
+
+    def _make_slots(self):
+        n = self.n
+        a, b, c, d = self.s3
+        nn = n * n
+        tr = lambda vals: [vals[j * n + i] for i in range(n) for j in range(n)]
+
+        def free():
+            return [self._val() for _ in range(nn)]
+
+        def sym():
+            m = [None] * nn
+            for i in range(n):
+                for j in range(i, n):
+                    m[i * n + j] = m[j * n + i] = self._val()
+            return m
+
+        base = [(free(), free(), free()) for _ in range(a)]
+        orb = [list(t) for t in base] + [[tr(v), tr(u), tr(w)] for u, v, w in base]
+        for _ in range(b):
+            u = free()
+            orb.append([u, tr(u), sym()])
+        xs = [free() for _ in range(c)]
+        fix = xs + [tr(x) for x in xs] + [sym() for _ in range(d)]
+        return orb, fix
 
 
 def s3_splits(r: int, min_sigma_orbits: int = 0):

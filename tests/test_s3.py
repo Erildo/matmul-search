@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 
 from matmul.cyclic import _inv, _mm, expand, is_cyclic_invariant, sigma, split_orbits, T
-from matmul.s3 import (S3F3CNF, is_s3_invariant, s3_normal_form, s3_split, s3_splits, scheme_s3_split, tau,
+from matmul.s3 import (S3F3CNF, S3NativeF3CNF, is_s3_invariant, s3_normal_form, s3_split, s3_splits, scheme_s3_split, tau,
                        tensor_key)
 from matmul.scheme import Scheme
 from matmul.verify import verify
@@ -173,3 +173,60 @@ def test_2x2_s3_encoder_agrees_with_enumeration(tmp_path):
         dets |= {(M[0][0] * M[1][1] - M[0][1] ** 2) % 3 for M in syms if {tensor_key(conj(M, tau(t))) for t in terms} == S}
     assert code == 20 and len(blocks) == 36
     assert dets == {2}
+
+
+def _random_s3_slots(rng, n, a, b, c, d):
+    sym = lambda: (lambda m: [[m[min(i, j)][max(i, j)] for j in range(n)] for i in range(n)])(rand_mat(rng, n))
+    base = [(rand_mat(rng, n), rand_mat(rng, n), rand_mat(rng, n)) for _ in range(a)]
+    orb = base + [tau(t) for t in base]
+    for _ in range(b):
+        u = rand_mat(rng, n)
+        orb.append((u, T(u), sym()))
+    xs = [rand_mat(rng, n) for _ in range(c)]
+    return orb, xs + [T(x) for x in xs] + [sym() for _ in range(d)]
+
+
+def test_native_encoder_size_and_006_witness():
+    nat, tied = S3NativeF3CNF(3, 1, 5, 0, 2), S3F3CNF(3, 1, 5, 0, 2)
+    assert len(tied.equations) == 249 and len(nat.equations) == 138
+    assert nat.nv < tied.nv / 2 + 500 and len(nat.clauses) < len(tied.clauses) / 2
+    o, f = s3_normal_form(*s3_split(*split_orbits(load(S3_006))))
+    assert nat.satisfied(nat.witness(o, f)) == []
+    big = S3NativeF3CNF(3, 2, 5, 1, 2)
+    zero = tuple([[0] * 3 for _ in range(3)] for _ in range(3))
+    orbs = [zero, o[0], zero, o[1]] + o[2:]
+    fx = [[[0] * 3 for _ in range(3)]] * 2 + f
+    assert big.satisfied(big.witness(orbs, fx)) == []
+
+
+@pytest.mark.parametrize("n,split", [(2, (1, 1, 1, 1)), (3, (1, 5, 0, 2)), (3, (2, 1, 1, 3))])
+def test_native_equations_are_the_tensor_entries(n, split):
+    """Every merged equation, on random S3-shaped slots, equals the Brent residual at each index tuple behind it."""
+    rng = random.Random(10)
+    cnf = S3NativeF3CNF(n, *split, break_sym=False)
+    for _ in range(5):
+        orb, fix = _random_s3_slots(rng, n, *split)
+        assign = cnf.witness(orb, fix)
+        val = lambda z: (1 if assign[z[0]] else 0) + (2 if assign[z[1]] else 0)
+        s = expand(n, orb, fix)
+        U, V, W = (np.array(m, dtype=int) for m in (s.U, s.V, s.W))
+        for (prods, target), idx in zip(cnf.equations, cnf.eq_index):
+            lhs = sum(val(x) * val(y) * val(z) for x, y, z in prods) % 3
+            for i, j, j2, l, i2, l2 in idx:
+                assert lhs == int((U[:, i, j] * V[:, j2, l] * W[:, i2, l2]).sum()) % 3
+                assert target == int(j == j2 and i == i2 and l == l2)
+
+
+@pytest.mark.timeout(120)
+@pytest.mark.skipif(shutil.which("cadical") is None, reason="cadical not installed")
+def test_2x2_native_encoder_agrees_with_tied_encoder(tmp_path):
+    f = tmp_path / "x.cnf"
+    for r in (8, 7, 6):
+        for sp in s3_splits(r):
+            nat, tied = S3NativeF3CNF(2, *sp), S3F3CNF(2, *sp)
+            cn, model = (20, None) if nat.trivially_unsat else _solve(nat, f)
+            ct, _ = (20, None) if tied.trivially_unsat else _solve(tied, f)
+            assert cn == ct, (r, sp)
+            if cn == 10:
+                s = expand(2, *nat.decode(model))
+                assert s.rank <= r and verify(s, mod=3).ok and is_s3_invariant(s)

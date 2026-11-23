@@ -397,8 +397,7 @@ class CyclicF3CNF:
         self.aux_defs: list = []  # (kind, out, ins) in creation order, for computing a witness
         nn = n * n
         # primary F3 values: orbit k has u, v, w (each n*n), fixed k has x (n*n)
-        self.orb = [[[self._val() for _ in range(nn)] for _ in range(3)] for _ in range(a)]
-        self.fix = [[self._val() for _ in range(nn)] for _ in range(b)]
+        self.orb, self.fix = self._make_slots()
         self.n_primary = self.nv
         self.equations = self._equations()
         for prods, target in self.equations:
@@ -519,6 +518,14 @@ class CyclicF3CNF:
                 self._lex_leq(self._bits(self.fix[k]), self._bits(self.fix[k + 1]))
 
     # -- variables
+    def _make_slots(self):
+        """Primary F3 values of the slots: orbit k is (u, v, w), fixed k is x, each a list of n*n values.
+        Subclasses may return lists that share values (attempt 010's native S3 encoder)."""
+        nn = self.n * self.n
+        orb = [[[self._val() for _ in range(nn)] for _ in range(3)] for _ in range(self.a)]
+        fix = [[self._val() for _ in range(nn)] for _ in range(self.b)]
+        return orb, fix
+
     def _new(self) -> int:
         self.nv += 1
         return self.nv

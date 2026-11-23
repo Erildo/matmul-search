@@ -7,7 +7,9 @@ Newest first. One entry per working session: what we did, and where to pick up.
 - Stage 0: S3 encoder (σ plus transpose τ), the 006 scheme in S3 form, tests. For 3x3 the S3 is unique up to equivalence; 2x2 has two.
 - **Stage A: all 5 instances timed out** (rank 23 at split (1,5,0,2) in 300 s, and the four nearest rank-22 splits in 120 s). 780 CPU-s.
 - By the decision rule, stage B (all 60 rank-22 splits) is on hold: the encoding is too slow even where a solution is known.
-- **Pick up here:** cube by the orthogonal-conjugacy class of one slot matrix (the symmetry left after S3), check the 006 scheme lands in its cube, and re-run the rank-23 rediscovery before stage B.
+- Orthogonal-class cubes rejected before building: the symmetry left after S3 has order 24, which gives 65–479 cubes per split.
+- Native S3 encoder (ties built into the variables): 249 → 138 equations, CNF half the size, tests pass. **Rank 23 is still not rediscovered in 300 s.**
+- **Pick up here:** freeze part of the 006 scheme and shrink the frozen part, to find the distance at which search stops working; then decide on a pin.
 
 ## 2026-11-23: attempts 007–009, end of the cyclic F3 route
 
