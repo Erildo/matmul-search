@@ -592,3 +592,51 @@ def test_freeze_all_orbits_reduce71_is_unsat_and_walk_subset_is_sat(tmp_path):
     model = [int(x) for l in r.stdout.splitlines() if l.startswith("v") for x in l.split()[1:]]
     s = expand(3, *cnf.decode(model))
     assert s.rank == 23 and verify(s, mod=3).ok and is_cyclic_invariant(s)
+
+
+# ---- 009: the CNF's equations are exactly the Brent equations of the expanded scheme ------------
+
+def _rand_mat(rng, n, p_zero=0.3):
+    return [[0 if rng.random() < p_zero else rng.randrange(1, 3) for _ in range(n)] for _ in range(n)]
+
+
+@pytest.mark.timeout(120)
+@pytest.mark.parametrize("n,a,b", [(2, 2, 1), (2, 1, 3), (3, 1, 19), (3, 2, 16), (3, 7, 1), (3, 6, 4)])
+def test_equations_match_the_expanded_tensor(n, a, b):
+    rng = random.Random(90 + 10 * a + b)
+    cnf = CyclicF3CNF(n, a, b, fixed_sum=False, break_sym=False)
+    # the equations' index lists partition all n^6 index tuples
+    idx = [t for ts in cnf.eq_index for t in ts]
+    assert len(idx) == len(set(idx)) == n ** 6 and len(cnf.eq_index) == len(cnf.equations)
+    val = lambda w, z: (1 if w[z[0]] else 0) + (2 if w[z[1]] else 0)
+    seen = set()
+    for trial in range(12):
+        orbits = [tuple(_rand_mat(rng, n) for _ in range(3)) for _ in range(a)]
+        fixed = [_rand_mat(rng, n) for _ in range(b)]
+        if trial % 3 == 0 and a and (n, a, b) == (2, 2, 1):
+            # one solution too, so the "all equations hold" side is exercised
+            r = CyclicF3CNF(2, 2, 1)
+            out = subprocess.run(["cadical", "-q", f"--seed={trial}"], input=r.dimacs(), capture_output=True, text=True)
+            model = [int(x) for l in out.stdout.splitlines() if l.startswith("v") for x in l.split()[1:]]
+            orbits, fixed = r.decode(model)
+        s = expand(n, orbits, fixed)
+        terms = [([[int(x) % 3 for x in row] for row in U], [[int(x) % 3 for x in row] for row in V],
+                  [[int(x) % 3 for x in row] for row in W]) for U, V, W in zip(s.U, s.V, s.W)]
+
+        def direct(i, j, j2, l, i2, l2):
+            tot = sum(U[i][j] * V[j2][l] * W[i2][l2] for U, V, W in terms)
+            return (tot - (1 if (j == j2 and i == i2 and l == l2) else 0)) % 3
+
+        w = cnf.witness(orbits, fixed)
+        all_hold = True
+        for (prods, target), ts in zip(cnf.equations, cnf.eq_index):
+            value = (sum(val(w, x) * val(w, y) * val(w, z) for x, y, z in prods) - target) % 3
+            for t in ts:
+                assert value == direct(*t)
+            all_hold &= value == 0
+        # the gate network agrees: some clause is violated iff some equation fails
+        assert (cnf.satisfied(w) == []) == all_hold
+        assert all_hold == verify(s, mod=3).ok if s.rank else True
+        seen.add(all_hold)
+    if (n, a, b) == (2, 2, 1):
+        assert seen == {True, False}

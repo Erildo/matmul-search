@@ -562,7 +562,7 @@ class CyclicF3CNF:
                 prods.append(tuple(sorted((at(A, i, j), at(B, j2, l), at(C, i2, l2)))))
             target = 1 if (j == j2 and i == i2 and l == l2) else 0
             key = (tuple(sorted(prods)), target)
-            seen.setdefault(key, None)
+            seen.setdefault(key, []).append((i, j, j2, l, i2, l2))
         # The same polynomial with two different targets: no solution at all. This happens for a = 0
         # (the tensor is not a sum of fixed terms); for a >= 1 it would mean the action is wrong (tested).
         byprods = {}
@@ -572,6 +572,8 @@ class CyclicF3CNF:
                 self.trivially_unsat = True
         if self.trivially_unsat:
             self.clauses.append([])
+        # every index tuple (i, j, j', l, i', l') behind each equation, for the equation-map test (attempt 009)
+        self.eq_index = list(seen.values())
         return [(list(p_), t) for p_, t in seen]
 
     # -- gates
