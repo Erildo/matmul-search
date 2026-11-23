@@ -4,6 +4,7 @@ import json
 import random
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -640,3 +641,13 @@ def test_equations_match_the_expanded_tensor(n, a, b):
         seen.add(all_hold)
     if (n, a, b) == (2, 2, 1):
         assert seen == {True, False}
+
+
+@pytest.mark.timeout(60)
+def test_cyclic_rank23_release_checks():
+    root = Path(__file__).resolve().parent.parent
+    r = subprocess.run([sys.executable, "-I", str(root / "scripts" / "check_cyclic_rank23.py"), "check"],
+                       capture_output=True, text=True, timeout=55)
+    assert r.returncode == 0, r.stdout + r.stderr
+    out = json.loads(r.stdout.strip().splitlines()[-1])
+    assert out["schemes"] == out["distinct_classes"] == 11 and out["failures"] == []
