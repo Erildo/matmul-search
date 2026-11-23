@@ -9,7 +9,13 @@ Newest first. One entry per working session: what we did, and where to pick up.
 - By the decision rule, stage B (all 60 rank-22 splits) is on hold: the encoding is too slow even where a solution is known.
 - Orthogonal-class cubes rejected before building: the symmetry left after S3 has order 24, which gives 65–479 cubes per split.
 - Native S3 encoder (ties built into the variables): 249 → 138 equations, CNF half the size, tests pass. **Rank 23 is still not rediscovered in 300 s.**
-- **Pick up here:** freeze part of the 006 scheme and shrink the frozen part, to find the distance at which search stops working; then decide on a pin.
+- Freeze ladder: re-solves the 006 scheme with up to 4 of its 5 size-3 slots free (0.02 s to 12 s), but not with all 5. The hardness is the instance's own.
+- Parallel run of four streams (sweep, local, cubes, theory), **stopped on request**. Status is in attempts/010-s3-f3.md under "Parallel streams".
+  - **Proved:** (N1) a ≥ 1 and (N2) 3a+b+c ≥ 6 rule out 24 of the 60 rank-22 splits; 36 remain.
+  - **Proved:** no S3 rank-22 scheme shares ≥ 6 of its 8 S3-slots with 3 of the known rank-23 classes (522 instances, all with proofs verified).
+  - **Found:** 6 S3-invariant rank-23 classes over F3, including Laderman's (split (1,4,1,3)).
+  - **Open:** no surviving split closes whole in 300 s. The cubes closed 7 of 24 cubes of (1,5,0,1).
+- **Pick up here:** the "Where to pick up" list at the end of attempts/010-s3-f3.md (local k = 5 completion, then the 17 open cubes of (1,5,0,1)).
 
 ## 2026-11-23: attempts 007–009, end of the cyclic F3 route
 

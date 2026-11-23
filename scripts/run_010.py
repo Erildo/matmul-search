@@ -4,7 +4,7 @@ Instance (a, b, c, d): S3F3CNF(3, a, b, c, d), rank 6a + 3b + 2c + d, every slot
 Every instance gets one line in results/runs.jsonl; SAT models are decoded, verified mod 3, checked for S3
 invariance and given their S3 split and class key.
 
-usage: python3 -I scripts/run_010.py sizes | A | A2
+usage: python3 -I scripts/run_010.py sizes | A | A2 | F
 
 A uses the tied encoder S3F3CNF; A2 onwards the native encoder S3NativeF3CNF (same instances, half the CNF).
 """
@@ -51,9 +51,43 @@ def run_instance(split, seed, cap, check_cap, native=False):
     return res
 
 
+S3_006 = ROOT / "results" / "f3" / "010_3x3x3_rank23_s3_from006.json"
+# Freeze ladder (stage F): split (1,5,0,2), native encoder; orbit slots 0 (size 6; slot 1 is its partner) and
+# 2..6 (size 3) hold the 006 scheme in S3 normal form except the listed free ones; the two size-1 slots are always free.
+LADDER = [("3x1", [6]), ("3x2", [5, 6]), ("3x3", [4, 5, 6]), ("3x4", [3, 4, 5, 6]), ("3x5", [2, 3, 4, 5, 6]),
+          ("6", [0]), ("6+3x1", [0, 6])]
+
+
+def run_freeze(label, free, seed, cap):
+    from matmul.cyclic import split_orbits
+    from matmul.s3 import s3_normal_form, s3_split
+    orbits, _ = s3_normal_form(*s3_split(*split_orbits(Scheme.load(S3_006))))
+    t = time.time()
+    enc = S3NativeF3CNF(3, 1, 5, 0, 2)
+    c0 = len(enc.clauses)
+    for k in [0] + list(range(2, 7)):
+        if k in free:
+            continue
+        for vals, mat in zip(enc.orb[k], orbits[k]):
+            for z, x in zip(vals, (e % 3 for r in mat for e in r)):
+                enc.clauses += [[lit] for lit in enc._is(z, x)]
+    frozen_units = len(enc.clauses) - c0
+    build = round(time.time() - t, 1)
+    name = f"n3_r23_s3_1502_native_free{label.replace('+', 'p')}_cadical_s{seed}"
+    res = solve_instance(enc, name, "cadical", seed, cap, work=WORK, found=FOUND, root=ROOT, drat_trim=DRAT_TRIM,
+                         attempt=ATTEMPT, prefix="010", check_cap=None,
+                         meta=dict(s3_split=[1, 5, 0, 2], s3_rank_max=23, build_s=build, encoder="native",
+                                   free=label, free_slots=free, frozen_units=frozen_units))
+    if res["status"] == "SAT":
+        s = Scheme.load(ROOT / res["scheme_file"])
+        res.update(s3_invariant=is_s3_invariant(s), s3_split_found=list(scheme_s3_split(s)), class_key=class_key(s, 3))
+    return res
+
+
 def record(res, stage, cap):
     record_run(RUNS, attempt=ATTEMPT, stage=stage, format="3x3x3", field="GF(3)",
-               method=f"SAT cadical on S3-invariant Brent equations mod 3 ({res['encoder']} encoder), S3 split (a,b,c,d)={tuple(res['s3_split'])}",
+               method=f"SAT cadical on S3-invariant Brent equations mod 3 ({res['encoder']} encoder), S3 split (a,b,c,d)={tuple(res['s3_split'])}"
+                      + (f", 006 scheme frozen except slots {res['free']}" if "free" in res else ""),
                best_rank_found=res.get("found_rank"),
                verified=bool(res.get("verified_mod3") and res.get("s3_invariant")) if res["status"] == "SAT"
                else (res.get("drat_trim") == "VERIFIED"),
@@ -81,5 +115,12 @@ if __name__ == "__main__":
     elif stage == "A2":
         # native encoder, rank-23 rediscovery only (420 CPU-s of stage A's allowance left)
         run_many([((1, 5, 0, 2), 100001, 300)], "A2", 600, native=True)
+    elif stage == "F":
+        with cf.ThreadPoolExecutor(max_workers=2) as ex:
+            futs = [ex.submit(run_freeze, lab, free, 100003, 120) for lab, free in LADDER]
+            for f in futs:
+                res = f.result()
+                record(res, "F", 120)
+                print(json.dumps(res), flush=True)
     else:
         raise SystemExit(__doc__)
