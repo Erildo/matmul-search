@@ -2,6 +2,13 @@
 
 Newest first. One entry per working session: what we did, and where to pick up.
 
+## 2026-11-23: attempt 010, S3-invariant F3 schemes, stage A
+
+- Stage 0: S3 encoder (σ plus transpose τ), the 006 scheme in S3 form, tests. For 3x3 the S3 is unique up to equivalence; 2x2 has two.
+- **Stage A: all 5 instances timed out** (rank 23 at split (1,5,0,2) in 300 s, and the four nearest rank-22 splits in 120 s). 780 CPU-s.
+- By the decision rule, stage B (all 60 rank-22 splits) is on hold: the encoding is too slow even where a solution is known.
+- **Pick up here:** cube by the orthogonal-conjugacy class of one slot matrix (the symmetry left after S3), check the 006 scheme lands in its cube, and re-run the rank-23 rediscovery before stage B.
+
 ## 2026-11-23: attempts 007–009, end of the cyclic F3 route
 
 - **007:** split (3,13) with every exclusion on, plus "all orbits nonzero" (allowed by 006's theorem). **0 of 21 cubes closed at 120 s.** Stage B was skipped by decision. The proof side stops at ≤ 2 orbits.
